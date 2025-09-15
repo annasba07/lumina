@@ -43,7 +43,7 @@ namespace SuperWhisperWPF
                 
                 if (!whisperInitialized)
                 {
-                    UpdateStatus("❌ Whisper engine failed to initialize", Colors.Red);
+                    UpdateStatus("Failed", Colors.Red);
                     return;
                 }
                 
@@ -70,7 +70,7 @@ namespace SuperWhisperWPF
                     typingTimer.Start();
                 };
                 
-                UpdateStatus("✅ Ready - Press Ctrl+Space to start recording", Colors.LimeGreen);
+                UpdateStatus("Ready", Colors.LimeGreen);
                 EngineStatusText.Text = "Ready";
                 isInitialized = true;
                 
@@ -79,7 +79,7 @@ namespace SuperWhisperWPF
             catch (Exception ex)
             {
                 Logger.Error($"Initialization failed: {ex.Message}", ex);
-                UpdateStatus($"❌ Initialization failed: {ex.Message}", Colors.Red);
+                UpdateStatus("Failed", Colors.Red);
             }
         }
 
@@ -106,7 +106,7 @@ namespace SuperWhisperWPF
             catch (Exception ex)
             {
                 Logger.Error($"Error toggling recording: {ex.Message}", ex);
-                UpdateStatus($"❌ Recording error: {ex.Message}", Colors.Red);
+                UpdateStatus("Error", Colors.Red);
             }
         }
 
@@ -118,8 +118,7 @@ namespace SuperWhisperWPF
             audioCapture.StartRecording();
             isRecording = true;
             
-            UpdateStatus("🎤 Recording - Press Ctrl+Space to stop", Colors.Orange);
-            StatusIcon.Glyph = "\uE720"; // Microphone icon
+            UpdateStatus("Recording", Colors.Orange);
             
             // Show recording overlay
             recordingOverlay.Show("🎤 Recording - Press Ctrl+Space to stop");
@@ -133,8 +132,7 @@ namespace SuperWhisperWPF
             audioCapture.StopRecording();
             isRecording = false;
             
-            UpdateStatus("⏳ Processing audio...", Colors.DeepSkyBlue);
-            StatusIcon.Glyph = "\uE8B5"; // Processing icon
+            UpdateStatus("Processing", Colors.DeepSkyBlue);
             
             // Update recording overlay
             recordingOverlay.Show("⏳ Processing audio...");
@@ -151,7 +149,7 @@ namespace SuperWhisperWPF
                 
                 // Process the audio
                 Dispatcher.Invoke(() => {
-                    UpdateStatus("⏳ Transcribing audio...", Colors.DeepSkyBlue);
+                    UpdateStatus("Transcribing", Colors.DeepSkyBlue);
                     recordingOverlay.Show("⏳ Transcribing audio...");
                 });
                 
@@ -163,7 +161,7 @@ namespace SuperWhisperWPF
                     Dispatcher.Invoke(() =>
                     {
                         AppendTranscription(transcription);
-                        UpdateStatus("✅ Transcription complete - Press Ctrl+Space to record again", Colors.LimeGreen);
+                        UpdateStatus("Complete", Colors.LimeGreen);
                         recordingOverlay.ShowTemporary("✅ Transcription complete", 2000);
                     });
                     
@@ -173,7 +171,7 @@ namespace SuperWhisperWPF
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        UpdateStatus("⚠️ No speech detected - Press Ctrl+Space to try again", Colors.Orange);
+                        UpdateStatus("No speech", Colors.Orange);
                         recordingOverlay.ShowTemporary("⚠️ No speech detected", 2000);
                     });
                     
@@ -185,7 +183,7 @@ namespace SuperWhisperWPF
                 Logger.Error($"Error processing speech: {ex.Message}", ex);
                 Dispatcher.Invoke(() =>
                 {
-                    UpdateStatus($"❌ Processing error: {ex.Message}", Colors.Red);
+                    UpdateStatus("Error", Colors.Red);
                     recordingOverlay.ShowTemporary("❌ Processing error", 3000);
                 });
             }
@@ -206,7 +204,7 @@ namespace SuperWhisperWPF
         private void UpdateStatus(string message, System.Windows.Media.Color color)
         {
             StatusText.Text = message;
-            StatusIcon.Foreground = new SolidColorBrush(color);
+            StatusIndicator.Fill = new SolidColorBrush(color);
         }
 
         private void AppendTranscription(string text)
@@ -284,7 +282,7 @@ namespace SuperWhisperWPF
             catch (Exception ex)
             {
                 Logger.Error($"Error copying to clipboard: {ex.Message}", ex);
-                UpdateStatus($"❌ Copy failed: {ex.Message}", Colors.Red);
+                UpdateStatus("Copy failed", Colors.Red);
             }
         }
 
@@ -294,7 +292,7 @@ namespace SuperWhisperWPF
             CopyButton.IsEnabled = false;
             ClearButton.IsEnabled = false;
             UpdateWordCount();
-            UpdateStatus("🗑️ Results cleared", Colors.Gray);
+            UpdateStatus("Cleared", Colors.Gray);
             Logger.Info("Results cleared");
         }
 

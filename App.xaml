@@ -9,42 +9,100 @@
                 <ui:ThemeResources />
                 <ui:XamlControlsResources />
                 
-                <!-- Custom theme colors -->
+                <!-- Telegram-inspired refined colors -->
                 <ResourceDictionary>
-                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1E1E1E"/>
-                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#2D2D30"/>
-                    <SolidColorBrush x:Key="AccentBrush" Color="#0078D4"/>
-                    <SolidColorBrush x:Key="AccentHoverBrush" Color="#106EBE"/>
+                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0F0F0F"/>
+                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#1C1C1E"/>
+                    <SolidColorBrush x:Key="CardSecondaryBrush" Color="#2C2C2E"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#32D74B"/>
+                    <SolidColorBrush x:Key="AccentHoverBrush" Color="#28CD41"/>
+                    <SolidColorBrush x:Key="AccentSubtleBrush" Color="#1C3A21"/>
                     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF"/>
-                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#C9C9C9"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8E8E93"/>
+                    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#636366"/>
+                    <SolidColorBrush x:Key="SeparatorBrush" Color="#38383A"/>
                     
-                    <!-- Modern card style -->
+                    <!-- Elegant card style -->
                     <Style x:Key="ModernCard" TargetType="Border">
                         <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}"/>
-                        <Setter Property="CornerRadius" Value="8"/>
-                        <Setter Property="BorderThickness" Value="1"/>
-                        <Setter Property="BorderBrush" Value="#404040"/>
-                        <Setter Property="Margin" Value="8"/>
-                        <Setter Property="Padding" Value="16"/>
+                        <Setter Property="CornerRadius" Value="12"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Margin" Value="16"/>
+                        <Setter Property="Padding" Value="32"/>
                         <Setter Property="Effect">
                             <Setter.Value>
-                                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.3" Color="Black"/>
+                                <DropShadowEffect BlurRadius="20" ShadowDepth="8" Opacity="0.2" Color="#000000"/>
                             </Setter.Value>
                         </Setter>
                     </Style>
                     
-                    <!-- Modern button style -->
+                    <!-- Clean section card -->
+                    <Style x:Key="SectionCard" TargetType="Border">
+                        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}"/>
+                        <Setter Property="CornerRadius" Value="12"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Margin" Value="0,0,0,24"/>
+                        <Setter Property="Padding" Value="24"/>
+                        <Setter Property="Effect">
+                            <Setter.Value>
+                                <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.15" Color="#000000"/>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    
+                    <!-- Elegant button style -->
                     <Style x:Key="ModernButton" TargetType="Button">
                         <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
-                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
                         <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Padding" Value="16,10"/>
-                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Padding" Value="20,12"/>
+                        <Setter Property="FontWeight" Value="Medium"/>
+                        <Setter Property="FontSize" Value="14"/>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                            CornerRadius="4"
+                                    <Border x:Name="ButtonBorder"
+                                            Background="{TemplateBinding Background}"
+                                            CornerRadius="8"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            BorderBrush="{TemplateBinding BorderBrush}">
+                                        <ContentPresenter HorizontalAlignment="Center" 
+                                                        VerticalAlignment="Center"/>
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#000000"/>
+                                        </Border.Effect>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="ButtonBorder" Property="RenderTransform">
+                                                <Setter.Value>
+                                                    <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    
+                    <!-- Secondary button style -->
+                    <Style x:Key="SecondaryButton" TargetType="Button">
+                        <Setter Property="Background" Value="{StaticResource CardSecondaryBrush}"/>
+                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Padding" Value="20,12"/>
+                        <Setter Property="FontWeight" Value="Medium"/>
+                        <Setter Property="FontSize" Value="14"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="ButtonBorder"
+                                            Background="{TemplateBinding Background}"
+                                            CornerRadius="8"
                                             BorderThickness="{TemplateBinding BorderThickness}"
                                             BorderBrush="{TemplateBinding BorderBrush}">
                                         <ContentPresenter HorizontalAlignment="Center" 
@@ -52,7 +110,8 @@
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                                            <Setter TargetName="ButtonBorder" Property="Background" Value="#3C3C3E"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
