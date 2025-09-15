@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Whisper.net;
 
-namespace SuperWhisperWindows
+namespace SuperWhisperWPF
 {
     public class WhisperEngine : IDisposable
     {
@@ -33,7 +33,8 @@ namespace SuperWhisperWindows
                         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ggml-base.en.bin"),
                         Path.Combine(Environment.CurrentDirectory, "ggml-base.en.bin"),
                         Path.Combine(Environment.CurrentDirectory, "bin\\Release\\net8.0-windows", "ggml-base.en.bin"),
-                        Path.Combine(Environment.CurrentDirectory, "bin\\Debug\\net8.0-windows", "ggml-base.en.bin")
+                        Path.Combine(Environment.CurrentDirectory, "bin\\Debug\\net8.0-windows", "ggml-base.en.bin"),
+                        Path.Combine(Environment.CurrentDirectory, "..\\src\\bin\\Debug\\net8.0-windows", "ggml-base.en.bin")
                     };
                     
                     string modelPath = null;

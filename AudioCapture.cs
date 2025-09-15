@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SuperWhisperWindows
+namespace SuperWhisperWPF
 {
     public class AudioCapture : IDisposable
     {

@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace SuperWhisperWindows
+namespace SuperWhisperWPF
 {
     public class GlobalHotkey : IDisposable
     {
@@ -48,12 +48,13 @@ namespace SuperWhisperWindows
         private readonly HiddenForm form;
         private bool isRegistered = false;
 
-        public GlobalHotkey(Action callback, uint modifier = MOD_CONTROL, uint key = VK_SPACE)
+        public event EventHandler HotkeyPressed;
+
+        public GlobalHotkey(object parentWindow, uint modifier = MOD_CONTROL, uint key = VK_SPACE)
         {
-            this.callback = callback ?? throw new ArgumentNullException(nameof(callback));
             this.hotkeyId = this.GetHashCode();
             
-            // Create hidden form to receive messages
+            // Create hidden form to receive messages - this is the key to reliable hotkeys!
             form = new HiddenForm(OnHotkeyPressed);
             
             // Register the hotkey
@@ -67,23 +68,25 @@ namespace SuperWhisperWindows
             // Add MOD_NOREPEAT to prevent key repeat events
             modifier |= MOD_NOREPEAT;
             
+            // Try to unregister first in case it's already registered
+            UnregisterHotKey(form.Handle, hotkeyId);
+            
             if (RegisterHotKey(form.Handle, hotkeyId, modifier, key))
             {
                 isRegistered = true;
+                Logger.Info($"Successfully registered hotkey using Windows Forms message loop (ID: {hotkeyId})");
             }
             else
             {
                 var error = GetLastError();
-                throw new InvalidOperationException(
-                    $"Failed to register hotkey. Error code: {error}. " +
-                    "The hotkey combination might already be in use by another application.");
+                Logger.Error($"Failed to register hotkey. Error code: {error}. The hotkey combination might already be in use.");
             }
         }
 
         private void OnHotkeyPressed()
         {
-            // Execute callback on UI thread
-            form.BeginInvoke(callback);
+            Logger.Debug($"Hotkey pressed (ID: {hotkeyId}) - triggering event");
+            HotkeyPressed?.Invoke(this, EventArgs.Empty);
         }
 
         public void Dispose()
@@ -92,12 +95,13 @@ namespace SuperWhisperWindows
             {
                 UnregisterHotKey(form.Handle, hotkeyId);
                 isRegistered = false;
+                Logger.Info("Global hotkey unregistered");
             }
             
             form?.Dispose();
         }
 
-        // Hidden form to receive Windows messages
+        // Hidden form to receive Windows messages - this is the proven approach!
         private class HiddenForm : Form
         {
             private readonly Action hotkeyCallback;
@@ -114,12 +118,14 @@ namespace SuperWhisperWindows
                 
                 // Ensure handle is created
                 var handle = Handle;
+                Logger.Info("Hidden Windows Forms window created for hotkey handling");
             }
 
             protected override void WndProc(ref Message m)
             {
                 if (m.Msg == WM_HOTKEY)
                 {
+                    Logger.Debug($"WM_HOTKEY message received: wParam={m.WParam.ToInt32()}");
                     hotkeyCallback?.Invoke();
                 }
                 
@@ -137,20 +143,25 @@ namespace SuperWhisperWindows
     // Extension methods for easier hotkey combinations
     public static class HotkeyExtensions
     {
-        public static GlobalHotkey CreateCtrlSpace(Action callback)
+        public static GlobalHotkey CreateCtrlSpace(object parentWindow, Action callback)
         {
-            return new GlobalHotkey(callback, GlobalHotkey.MOD_CONTROL, GlobalHotkey.VK_SPACE);
+            var hotkey = new GlobalHotkey(parentWindow, GlobalHotkey.MOD_CONTROL, GlobalHotkey.VK_SPACE);
+            hotkey.HotkeyPressed += (s, e) => callback();
+            return hotkey;
         }
         
-        public static GlobalHotkey CreateAltSpace(Action callback)
+        public static GlobalHotkey CreateAltSpace(object parentWindow, Action callback)
         {
-            return new GlobalHotkey(callback, GlobalHotkey.MOD_ALT, GlobalHotkey.VK_SPACE);
+            var hotkey = new GlobalHotkey(parentWindow, GlobalHotkey.MOD_ALT, GlobalHotkey.VK_SPACE);
+            hotkey.HotkeyPressed += (s, e) => callback();
+            return hotkey;
         }
         
-        public static GlobalHotkey CreateWinSpace(Action callback)
+        public static GlobalHotkey CreateWinSpace(object parentWindow, Action callback)
         {
-            return new GlobalHotkey(callback, GlobalHotkey.MOD_WIN, GlobalHotkey.VK_SPACE);
+            var hotkey = new GlobalHotkey(parentWindow, GlobalHotkey.MOD_WIN, GlobalHotkey.VK_SPACE);
+            hotkey.HotkeyPressed += (s, e) => callback();
+            return hotkey;
         }
     }
-
 }

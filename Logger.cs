@@ -2,14 +2,14 @@ using System;
 using System.IO;
 using System.Threading;
 
-namespace SuperWhisperWindows
+namespace SuperWhisperWPF
 {
     public static class Logger
     {
         private static readonly object lockObject = new object();
         private static readonly string logFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SuperWhisper", "logs", $"superwhisper_{DateTime.Now:yyyy-MM-dd}.log");
+            "SuperWhisper", "logs", $"superwhisper_wpf_{DateTime.Now:yyyy-MM-dd}.log");
         
         static Logger()
         {
@@ -22,7 +22,7 @@ namespace SuperWhisperWindows
                 }
                 
                 // Write startup header
-                WriteToFile($"\n=== SuperWhisper Started at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n");
+                WriteToFile($"\n=== SuperWhisper WPF Started at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n");
             }
             catch (Exception ex)
             {
@@ -87,37 +87,6 @@ namespace SuperWhisperWindows
             Info($"Working Directory: {Environment.CurrentDirectory}");
             Info($".NET Version: {Environment.Version}");
             Info($"Log File: {logFilePath}");
-            
-            // Check critical files
-            var outputPath = Path.Combine(Environment.CurrentDirectory, "bin", "Release", "net8.0-windows");
-            var whisperDll = Path.Combine(outputPath, "whisper.dll");
-            var modelFile = Path.Combine(outputPath, "ggml-base.en.bin");
-            
-            Info($"Output Path: {outputPath}");
-            Info($"whisper.dll exists: {File.Exists(whisperDll)} (Size: {GetFileSize(whisperDll)})");
-            Info($"Model file exists: {File.Exists(modelFile)} (Size: {GetFileSize(modelFile)})");
-        }
-        
-        private static string GetFileSize(string path)
-        {
-            try
-            {
-                if (File.Exists(path))
-                {
-                    var size = new FileInfo(path).Length;
-                    if (size > 1024 * 1024)
-                        return $"{size / (1024 * 1024):F1} MB";
-                    else if (size > 1024)
-                        return $"{size / 1024:F1} KB";
-                    else
-                        return $"{size} bytes";
-                }
-                return "N/A";
-            }
-            catch
-            {
-                return "Error";
-            }
         }
         
         public static void ShowLogLocation()
