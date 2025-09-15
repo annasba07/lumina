@@ -15,6 +15,14 @@ namespace SuperWhisperWPF
 {
     public partial class MainWindow : Window
     {
+        // Constants
+        private const int TYPING_TIMER_DELAY_MS = 500;
+        private const int BALLOON_TIP_TIMEOUT_MS = 2000;
+        private const int OVERLAY_SUCCESS_DURATION_MS = 2000;
+        private const int OVERLAY_ERROR_DURATION_MS = 3000;
+        private const int COPY_FEEDBACK_DURATION_MS = 1500;
+        private const int TRAY_ICON_SIZE = 16;
+
         private WhisperEngine whisperEngine;
         private AudioCapture audioCapture;
         private GlobalHotkey globalHotkey;
@@ -63,7 +71,7 @@ namespace SuperWhisperWPF
                 
                 // Initialize typing timer for word count
                 typingTimer = new DispatcherTimer();
-                typingTimer.Interval = TimeSpan.FromMilliseconds(500);
+                typingTimer.Interval = TimeSpan.FromMilliseconds(TYPING_TIMER_DELAY_MS);
                 typingTimer.Tick += (s, e) => UpdateWordCount();
                 ResultsTextBox.TextChanged += (s, e) => {
                     typingTimer.Stop();
@@ -71,7 +79,6 @@ namespace SuperWhisperWPF
                 };
                 
                 UpdateStatus("Ready", Colors.LimeGreen);
-                EngineStatusText.Text = "Ready";
                 isInitialized = true;
                 
                 Logger.Info("SuperWhisper WPF initialization completed successfully");
@@ -162,7 +169,7 @@ namespace SuperWhisperWPF
                     {
                         AppendTranscription(transcription);
                         UpdateStatus("Complete", Colors.LimeGreen);
-                        recordingOverlay.ShowTemporary("✅ Transcription complete", 2000);
+                        recordingOverlay.ShowTemporary("✅ Transcription complete", OVERLAY_SUCCESS_DURATION_MS);
                     });
                     
                     Logger.Info($"Transcription completed: '{transcription}'");
@@ -172,7 +179,7 @@ namespace SuperWhisperWPF
                     Dispatcher.Invoke(() =>
                     {
                         UpdateStatus("No speech", Colors.Orange);
-                        recordingOverlay.ShowTemporary("⚠️ No speech detected", 2000);
+                        recordingOverlay.ShowTemporary("⚠️ No speech detected", OVERLAY_SUCCESS_DURATION_MS);
                     });
                     
                     Logger.Warning("No transcription result");
@@ -184,20 +191,14 @@ namespace SuperWhisperWPF
                 Dispatcher.Invoke(() =>
                 {
                     UpdateStatus("Error", Colors.Red);
-                    recordingOverlay.ShowTemporary("❌ Processing error", 3000);
+                    recordingOverlay.ShowTemporary("❌ Processing error", OVERLAY_ERROR_DURATION_MS);
                 });
             }
         }
 
         private void OnAudioLevelChanged(object sender, float level)
         {
-            // Update audio level indicator on UI thread
-            Dispatcher.Invoke(() =>
-            {
-                AudioLevelBar.Value = level;
-            });
-            
-            // Also update recording overlay
+            // Update recording overlay with audio level
             recordingOverlay?.UpdateAudioLevel(level);
         }
 
@@ -271,7 +272,7 @@ namespace SuperWhisperWPF
                     };
                     CopyButton.Background = new SolidColorBrush(Colors.Green);
                     
-                    await Task.Delay(1500);
+                    await Task.Delay(COPY_FEEDBACK_DURATION_MS);
                     
                     CopyButton.Content = originalContent;
                     CopyButton.Background = originalBackground;
@@ -351,7 +352,7 @@ namespace SuperWhisperWPF
         private System.Drawing.Icon CreateTrayIcon()
         {
             // Create a simple icon programmatically
-            var bitmap = new Bitmap(16, 16);
+            var bitmap = new Bitmap(TRAY_ICON_SIZE, TRAY_ICON_SIZE);
             using (var g = Graphics.FromImage(bitmap))
             {
                 g.Clear(System.Drawing.Color.Transparent);
@@ -370,8 +371,8 @@ namespace SuperWhisperWPF
                 this.Hide();
                 
                 // Show notification
-                trayIcon.ShowBalloonTip(2000, "SuperWhisper", 
-                    "Application minimized to tray. Double-click the tray icon to restore. Ctrl+Space still works!", 
+                trayIcon.ShowBalloonTip(BALLOON_TIP_TIMEOUT_MS, "SuperWhisper",
+                    "Application minimized to tray. Double-click the tray icon to restore. Ctrl+Space still works!",
                     ToolTipIcon.Info);
                 
                 Logger.Info("Window minimized to tray - hotkeys remain active");
@@ -387,8 +388,8 @@ namespace SuperWhisperWPF
                 this.Hide();
                 
                 // Show notification
-                trayIcon.ShowBalloonTip(2000, "SuperWhisper", 
-                    "Application minimized to tray. Double-click the tray icon to restore. Ctrl+Space still works!", 
+                trayIcon.ShowBalloonTip(BALLOON_TIP_TIMEOUT_MS, "SuperWhisper",
+                    "Application minimized to tray. Double-click the tray icon to restore. Ctrl+Space still works!",
                     ToolTipIcon.Info);
                 
                 Logger.Info("Window minimized to tray via minimize button - hotkeys remain active");
@@ -402,21 +403,57 @@ namespace SuperWhisperWPF
             try
             {
                 Logger.Info("Shutting down SuperWhisper...");
-                
-                trayIcon?.Dispose();
-                recordingOverlay?.Close();
-                globalHotkey?.Dispose();
-                audioCapture?.Dispose();
-                whisperEngine?.Dispose();
-                typingTimer?.Stop();
-                
+
+                // Stop and dispose timer first
+                if (typingTimer != null)
+                {
+                    typingTimer.Stop();
+                    typingTimer = null;
+                }
+
+                // Dispose tray icon
+                if (trayIcon != null)
+                {
+                    trayIcon.Visible = false;
+                    trayIcon.Dispose();
+                    trayIcon = null;
+                }
+
+                // Close overlay window
+                if (recordingOverlay != null)
+                {
+                    recordingOverlay.Close();
+                    recordingOverlay = null;
+                }
+
+                // Dispose hotkey
+                if (globalHotkey != null)
+                {
+                    globalHotkey.Dispose();
+                    globalHotkey = null;
+                }
+
+                // Dispose audio capture
+                if (audioCapture != null)
+                {
+                    audioCapture.Dispose();
+                    audioCapture = null;
+                }
+
+                // Dispose whisper engine
+                if (whisperEngine != null)
+                {
+                    whisperEngine.Dispose();
+                    whisperEngine = null;
+                }
+
                 Logger.Info("SuperWhisper shutdown complete");
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error during shutdown: {ex.Message}", ex);
             }
-            
+
             base.OnClosed(e);
         }
     }
