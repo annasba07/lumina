@@ -14,7 +14,7 @@ namespace SuperWhisperWPF
         public int SampleRate { get; set; } = 16000;
         public int Channels { get; set; } = 1;
         public int BufferMilliseconds { get; set; } = 50;
-        public int MaxRecordingSeconds { get; set; } = 300;
+        public int MaxRecordingSeconds { get; set; } = 7200; // 2 hours (uses ~230MB RAM)
 
         // Hotkey settings
         public string HotkeyModifier { get; set; } = "Control";

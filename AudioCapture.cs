@@ -19,12 +19,15 @@ namespace SuperWhisperWPF
         private const int SAMPLE_RATE = 16000;
         private const int CHANNELS = 1;
         private const int BUFFER_MILLISECONDS = 50; // Low latency buffer
-        private const int MAX_RECORDING_SECONDS = 300; // 5 minutes max recording
-        private const int BYTES_PER_SECOND = SAMPLE_RATE * CHANNELS * 2; // 16-bit audio
+        private const int MAX_RECORDING_SECONDS = 7200; // 2 hours max recording (230MB)
+        private const int BYTES_PER_SECOND = SAMPLE_RATE * CHANNELS * 2; // 16-bit audio = 32KB/sec
+        private const int WARNING_SECONDS = 300; // Warn when 5 minutes remaining
         private readonly int maxBufferSize;
+        private bool warningShown = false;
         
         public event EventHandler<byte[]> SpeechEnded;
         public event EventHandler<float> AudioLevelChanged;
+        public event EventHandler<int> ApproachingLimit; // Fired when nearing max duration
 
         public AudioCapture()
         {
@@ -51,6 +54,7 @@ namespace SuperWhisperWPF
                 if (isRecording) return;
                 
                 audioBuffer.Clear();
+                warningShown = false; // Reset warning flag
                 isRecording = true;
                 waveIn.StartRecording();
             }
@@ -82,13 +86,27 @@ namespace SuperWhisperWPF
                 // Check if we've reached max recording duration
                 if (audioBuffer.Count + e.BytesRecorded > maxBufferSize)
                 {
-                    Logger.Warning($"Maximum recording duration of {MAX_RECORDING_SECONDS} seconds reached");
+                    Logger.Warning($"Maximum recording duration of {MAX_RECORDING_SECONDS / 3600.0:F1} hours reached");
                     StopRecording();
                     return;
                 }
 
                 // Add audio data to buffer
                 audioBuffer.AddRange(e.Buffer.Take(e.BytesRecorded));
+
+                // Check if we should warn about approaching limit
+                var remainingBytes = maxBufferSize - audioBuffer.Count;
+                var remainingSeconds = remainingBytes / BYTES_PER_SECOND;
+
+                if (!warningShown && remainingSeconds <= WARNING_SECONDS)
+                {
+                    warningShown = true;
+                    var remainingMinutes = remainingSeconds / 60.0;
+                    Logger.Warning($"Recording approaching limit - {remainingMinutes:F1} minutes remaining");
+
+                    // Notify listeners about approaching limit
+                    ApproachingLimit?.Invoke(this, (int)remainingSeconds);
+                }
             }
 
             // Calculate audio level for visual feedback
