@@ -64,13 +64,13 @@ namespace SuperWhisperWPF
         private void RegisterHotkeyInternal(uint modifier, uint key)
         {
             if (isRegistered) return;
-            
+
             // Add MOD_NOREPEAT to prevent key repeat events
             modifier |= MOD_NOREPEAT;
-            
+
             // Try to unregister first in case it's already registered
             UnregisterHotKey(form.Handle, hotkeyId);
-            
+
             if (RegisterHotKey(form.Handle, hotkeyId, modifier, key))
             {
                 isRegistered = true;
@@ -79,8 +79,53 @@ namespace SuperWhisperWPF
             else
             {
                 var error = GetLastError();
-                Logger.Error($"Failed to register hotkey. Error code: {error}. The hotkey combination might already be in use.");
+                var hotkeyName = GetHotkeyName(modifier, key);
+                var errorMessage = GetHotkeyErrorMessage(error, hotkeyName);
+
+                Logger.Error($"Failed to register hotkey {hotkeyName}. {errorMessage}");
+
+                // Show user-friendly error message
+                System.Windows.Forms.MessageBox.Show(
+                    $"Unable to register the hotkey {hotkeyName}.\n\n{errorMessage}\n\nPlease check if another application is using this hotkey or try configuring a different hotkey combination.",
+                    "SuperWhisper - Hotkey Registration Failed",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning
+                );
             }
+        }
+
+        private string GetHotkeyName(uint modifier, uint key)
+        {
+            var parts = new System.Collections.Generic.List<string>();
+
+            // Remove MOD_NOREPEAT flag for display
+            modifier &= ~MOD_NOREPEAT;
+
+            if ((modifier & MOD_CONTROL) != 0) parts.Add("Ctrl");
+            if ((modifier & MOD_ALT) != 0) parts.Add("Alt");
+            if ((modifier & MOD_SHIFT) != 0) parts.Add("Shift");
+            if ((modifier & MOD_WIN) != 0) parts.Add("Win");
+
+            var keyName = key switch
+            {
+                VK_SPACE => "Space",
+                >= VK_F1 and <= VK_F12 => $"F{key - VK_F1 + 1}",
+                _ => $"Key{key:X2}"
+            };
+
+            parts.Add(keyName);
+            return string.Join("+", parts);
+        }
+
+        private string GetHotkeyErrorMessage(uint errorCode, string hotkeyName)
+        {
+            return errorCode switch
+            {
+                1409 => $"The hotkey {hotkeyName} is already registered by another application.",
+                87 => "Invalid hotkey parameters. Please check your configuration.",
+                1400 => "Invalid window handle. Please restart the application.",
+                _ => $"Error code {errorCode}: The hotkey might be in use by another application or Windows."
+            };
         }
 
         private void OnHotkeyPressed()

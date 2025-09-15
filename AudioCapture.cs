@@ -14,17 +14,22 @@ namespace SuperWhisperWPF
         private readonly List<byte> audioBuffer;
         private bool isRecording;
         private readonly object lockObject = new object();
-        
+
         // Audio settings optimized for Whisper
         private const int SAMPLE_RATE = 16000;
         private const int CHANNELS = 1;
+        private const int BUFFER_MILLISECONDS = 50; // Low latency buffer
+        private const int MAX_RECORDING_SECONDS = 300; // 5 minutes max recording
+        private const int BYTES_PER_SECOND = SAMPLE_RATE * CHANNELS * 2; // 16-bit audio
+        private readonly int maxBufferSize;
         
         public event EventHandler<byte[]> SpeechEnded;
         public event EventHandler<float> AudioLevelChanged;
 
         public AudioCapture()
         {
-            audioBuffer = new List<byte>();
+            maxBufferSize = BYTES_PER_SECOND * MAX_RECORDING_SECONDS;
+            audioBuffer = new List<byte>(maxBufferSize);
             InitializeAudioCapture();
         }
 
@@ -33,7 +38,7 @@ namespace SuperWhisperWPF
             waveIn = new WaveInEvent
             {
                 WaveFormat = new WaveFormat(SAMPLE_RATE, CHANNELS),
-                BufferMilliseconds = 50 // Low latency
+                BufferMilliseconds = BUFFER_MILLISECONDS
             };
             
             waveIn.DataAvailable += OnDataAvailable;
@@ -72,9 +77,20 @@ namespace SuperWhisperWPF
         {
             if (!isRecording) return;
 
-            // Add audio data to buffer
-            audioBuffer.AddRange(e.Buffer.Take(e.BytesRecorded));
-            
+            lock (lockObject)
+            {
+                // Check if we've reached max recording duration
+                if (audioBuffer.Count + e.BytesRecorded > maxBufferSize)
+                {
+                    Logger.Warning($"Maximum recording duration of {MAX_RECORDING_SECONDS} seconds reached");
+                    StopRecording();
+                    return;
+                }
+
+                // Add audio data to buffer
+                audioBuffer.AddRange(e.Buffer.Take(e.BytesRecorded));
+            }
+
             // Calculate audio level for visual feedback
             var audioLevel = CalculateAudioLevel(e.Buffer, e.BytesRecorded);
             AudioLevelChanged?.Invoke(this, audioLevel);
@@ -100,8 +116,16 @@ namespace SuperWhisperWPF
 
         public void Dispose()
         {
-            StopRecording();
-            waveIn?.Dispose();
+            try
+            {
+                StopRecording();
+                waveIn?.Dispose();
+                waveIn = null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error disposing AudioCapture: {ex.Message}", ex);
+            }
         }
     }
 

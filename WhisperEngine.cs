@@ -16,10 +16,10 @@ namespace SuperWhisperWPF
         public async Task<bool> InitializeAsync()
         {
             Logger.Info("Starting WhisperEngine initialization with Whisper.net...");
-            
+
             lock (lockObject)
             {
-                if (isInitialized) 
+                if (isInitialized)
                 {
                     Logger.Info("WhisperEngine already initialized");
                     return true;
@@ -27,37 +27,12 @@ namespace SuperWhisperWPF
 
                 try
                 {
-                    // Check for model file in multiple locations
-                    var possiblePaths = new[]
-                    {
-                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ggml-base.en.bin"),
-                        Path.Combine(Environment.CurrentDirectory, "ggml-base.en.bin"),
-                        Path.Combine(Environment.CurrentDirectory, "bin\\Release\\net8.0-windows", "ggml-base.en.bin"),
-                        Path.Combine(Environment.CurrentDirectory, "bin\\Debug\\net8.0-windows", "ggml-base.en.bin"),
-                        Path.Combine(Environment.CurrentDirectory, "..\\src\\bin\\Debug\\net8.0-windows", "ggml-base.en.bin")
-                    };
-                    
-                    string modelPath = null;
-                    foreach (var path in possiblePaths)
-                    {
-                        Logger.Debug($"Checking model path: {path}");
-                        if (File.Exists(path))
-                        {
-                            modelPath = path;
-                            var fileInfo = new FileInfo(path);
-                            Logger.Info($"Found model file: {path} (Size: {fileInfo.Length / (1024 * 1024):F1} MB)");
-                            break;
-                        }
-                    }
-                    
+                    var settings = AppSettings.Instance;
+                    var modelPath = settings.FindModelPath();
+
                     if (modelPath == null)
                     {
-                        Logger.Error("Model file 'ggml-base.en.bin' not found in any expected location:");
-                        foreach (var path in possiblePaths)
-                        {
-                            Logger.Error($"  - {path}");
-                        }
-                        throw new FileNotFoundException("Model file not found in any expected location");
+                        throw new FileNotFoundException($"Model file '{settings.ModelFileName}' not found in any expected location");
                     }
 
                     Logger.Info("Creating Whisper.net factory and processor...");
@@ -66,11 +41,12 @@ namespace SuperWhisperWPF
                     whisperFactory = WhisperFactory.FromPath(modelPath);
                     Logger.Info("✅ WhisperFactory created successfully");
                     
-                    // Create processor with simple configuration
+                    // Create processor with configuration from settings
+                    var settings = AppSettings.Instance;
                     processor = whisperFactory.CreateBuilder()
-                        .WithLanguage("en")
+                        .WithLanguage(settings.Language)
                         .WithPrompt("") // No initial prompt
-                        .WithTemperature(0.0f) // Deterministic output
+                        .WithTemperature(settings.Temperature)
                         .Build();
                         
                     Logger.Info("✅ WhisperProcessor created successfully");
