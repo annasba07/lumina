@@ -42,7 +42,6 @@ namespace SuperWhisperWPF
                     Logger.Info("✅ WhisperFactory created successfully");
                     
                     // Create processor with configuration from settings
-                    var settings = AppSettings.Instance;
                     processor = whisperFactory.CreateBuilder()
                         .WithLanguage(settings.Language)
                         .WithPrompt("") // No initial prompt
