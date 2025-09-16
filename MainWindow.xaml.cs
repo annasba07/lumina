@@ -26,7 +26,9 @@ namespace SuperWhisperWPF
         private WhisperEngine whisperEngine;
         private AudioCapture audioCapture;
         private GlobalHotkey globalHotkey;
-        private RecordingOverlay recordingOverlay;
+        private DispatcherTimer recordingTimer;
+        private DateTime recordingStartTime;
+        private System.Windows.Media.Animation.Storyboard toastPulseAnimation;
         private NotifyIcon trayIcon;
         private bool isRecording = false;
         private bool isInitialized = false;
@@ -51,7 +53,7 @@ namespace SuperWhisperWPF
                 
                 if (!whisperInitialized)
                 {
-                    UpdateStatus("Failed", Colors.Red);
+                    UpdateStatus("Failed", System.Windows.Media.Colors.Red);
                     return;
                 }
                 
@@ -59,12 +61,18 @@ namespace SuperWhisperWPF
                 audioCapture = new AudioCapture();
                 audioCapture.SpeechEnded += OnSpeechEnded;
                 audioCapture.AudioLevelChanged += OnAudioLevelChanged;
+                audioCapture.ApproachingLimit += OnApproachingLimit;
                 
                 // Initialize global hotkey (Ctrl+Space) using proven Windows Forms approach
                 globalHotkey = HotkeyExtensions.CreateCtrlSpace(this, () => OnHotkeyPressed(null, null));
                 
-                // Initialize recording overlay
-                recordingOverlay = new RecordingOverlay();
+                // Initialize recording timer
+                recordingTimer = new DispatcherTimer();
+                recordingTimer.Interval = TimeSpan.FromMilliseconds(100);
+                recordingTimer.Tick += UpdateRecordingTime;
+
+                // Initialize toast pulse animation
+                InitializeToastAnimation();
                 
                 // Initialize system tray
                 InitializeSystemTray();
@@ -78,15 +86,28 @@ namespace SuperWhisperWPF
                     typingTimer.Start();
                 };
                 
-                UpdateStatus("Ready", Colors.LimeGreen);
+                UpdateStatus("Ready", System.Windows.Media.Colors.Green);
+
+            // Clear placeholder text when app is ready
+            if (ResultsTextBox.Text == "Your transcriptions will appear here...")
+            {
+                ResultsTextBox.Text = "";
+                ResultsTextBox.Foreground = new SolidColorBrush(System.Windows.Media.Colors.Gray);
+                ResultsTextBox.GotFocus += (s, e) => {
+                    if (string.IsNullOrWhiteSpace(ResultsTextBox.Text))
+                    {
+                        ResultsTextBox.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x19, 0x19, 0x19));
+                    }
+                };
+            }
                 isInitialized = true;
                 
-                Logger.Info("SuperWhisper WPF initialization completed successfully");
+                Logger.Info("Lumina initialization completed successfully");
             }
             catch (Exception ex)
             {
                 Logger.Error($"Initialization failed: {ex.Message}", ex);
-                UpdateStatus("Failed", Colors.Red);
+                UpdateStatus("Failed", System.Windows.Media.Colors.Red);
             }
         }
 
@@ -113,7 +134,7 @@ namespace SuperWhisperWPF
             catch (Exception ex)
             {
                 Logger.Error($"Error toggling recording: {ex.Message}", ex);
-                UpdateStatus("Error", Colors.Red);
+                UpdateStatus("Error", System.Windows.Media.Colors.Red);
             }
         }
 
@@ -125,10 +146,12 @@ namespace SuperWhisperWPF
             audioCapture.StartRecording();
             isRecording = true;
             
-            UpdateStatus("Recording", Colors.Orange);
+            UpdateStatus("Recording", System.Windows.Media.Colors.Orange);
             
-            // Show recording overlay
-            recordingOverlay.Show("🎤 Recording - Press Ctrl+Space to stop");
+            // Show toast notification
+            recordingStartTime = DateTime.Now;
+            recordingTimer.Start();
+            ShowToast("Recording", "00:00");
         }
 
         private void StopRecording()
@@ -139,10 +162,11 @@ namespace SuperWhisperWPF
             audioCapture.StopRecording();
             isRecording = false;
             
-            UpdateStatus("Processing", Colors.DeepSkyBlue);
+            UpdateStatus("Processing", System.Windows.Media.Colors.DeepSkyBlue);
             
-            // Update recording overlay
-            recordingOverlay.Show("⏳ Processing audio...");
+            // Update toast notification
+            recordingTimer.Stop();
+            ShowToast("Processing", "⏳");
         }
 
         private async void OnSpeechEnded(object sender, byte[] audioData)
@@ -156,8 +180,8 @@ namespace SuperWhisperWPF
                 
                 // Process the audio
                 Dispatcher.Invoke(() => {
-                    UpdateStatus("Transcribing", Colors.DeepSkyBlue);
-                    recordingOverlay.Show("⏳ Transcribing audio...");
+                    UpdateStatus("Transcribing", System.Windows.Media.Colors.DeepSkyBlue);
+                    ShowToast("Processing", "⏳");
                 });
                 
                 var transcription = await whisperEngine.TranscribeAsync(audioData);
@@ -168,8 +192,9 @@ namespace SuperWhisperWPF
                     Dispatcher.Invoke(() =>
                     {
                         AppendTranscription(transcription);
-                        UpdateStatus("Complete", Colors.LimeGreen);
-                        recordingOverlay.ShowTemporary("✅ Transcription complete", OVERLAY_SUCCESS_DURATION_MS);
+                        UpdateStatus("Ready", System.Windows.Media.Colors.Green);
+                        HideToast();
+                        RecordingHintText.Text = "Press Ctrl+Space to start recording";
                     });
                     
                     Logger.Info($"Transcription completed: '{transcription}'");
@@ -178,8 +203,15 @@ namespace SuperWhisperWPF
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        UpdateStatus("No speech", Colors.Orange);
-                        recordingOverlay.ShowTemporary("⚠️ No speech detected", OVERLAY_SUCCESS_DURATION_MS);
+                        UpdateStatus("No speech", System.Windows.Media.Colors.Orange);
+                        HideToast();
+                        RecordingHintText.Text = "No speech detected - Press Ctrl+Space to try again";
+
+                        // Reset hint text after delay
+                        Task.Delay(3000).ContinueWith(t =>
+                        {
+                            Dispatcher.Invoke(() => RecordingHintText.Text = "Press Ctrl+Space to start recording");
+                        });
                     });
                     
                     Logger.Warning("No transcription result");
@@ -190,16 +222,34 @@ namespace SuperWhisperWPF
                 Logger.Error($"Error processing speech: {ex.Message}", ex);
                 Dispatcher.Invoke(() =>
                 {
-                    UpdateStatus("Error", Colors.Red);
-                    recordingOverlay.ShowTemporary("❌ Processing error", OVERLAY_ERROR_DURATION_MS);
+                    UpdateStatus("Error", System.Windows.Media.Colors.Red);
+                    HideToast();
+                    RecordingHintText.Text = "Error processing audio - Press Ctrl+Space to try again";
+
+                    // Reset hint text after delay
+                    Task.Delay(3000).ContinueWith(t =>
+                    {
+                        Dispatcher.Invoke(() => RecordingHintText.Text = "Press Ctrl+Space to start recording");
+                    });
                 });
             }
         }
 
         private void OnAudioLevelChanged(object sender, float level)
         {
-            // Update recording overlay with audio level
-            recordingOverlay?.UpdateAudioLevel(level);
+            // Toast notification doesn't need audio level updates
+            // This could be used for other visual feedback if needed
+        }
+
+        private void OnApproachingLimit(object sender, int remainingSeconds)
+        {
+            // Show warning when approaching recording limit
+            Dispatcher.Invoke(() =>
+            {
+                var remainingMinutes = remainingSeconds / 60.0;
+                RecordingHintText.Text = $"Warning: {remainingMinutes:F1} minutes remaining";
+                UpdateStatus("Warning", System.Windows.Media.Colors.Orange);
+            });
         }
 
         private void UpdateStatus(string message, System.Windows.Media.Color color)
@@ -229,24 +279,12 @@ namespace SuperWhisperWPF
             CopyButton.IsEnabled = true;
             ClearButton.IsEnabled = true;
             
-            // Update word count
-            UpdateWordCount();
+            // Word count removed in minimal UI
         }
 
         private void UpdateWordCount()
         {
-            if (string.IsNullOrWhiteSpace(ResultsTextBox.Text))
-            {
-                WordCountText.Text = "0 words";
-                return;
-            }
-            
-            var words = ResultsTextBox.Text
-                .Split(new char[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => !w.StartsWith("[") || !w.EndsWith("]")) // Exclude timestamps
-                .Count();
-            
-            WordCountText.Text = $"{words} word{(words != 1 ? "s" : "")}";
+            // Word count removed in minimal UI design
         }
 
         private async void CopyButton_Click(object sender, RoutedEventArgs e)
@@ -270,7 +308,7 @@ namespace SuperWhisperWPF
                             new TextBlock { Text = "Copied!" }
                         }
                     };
-                    CopyButton.Background = new SolidColorBrush(Colors.Green);
+                    CopyButton.Background = new SolidColorBrush(System.Windows.Media.Colors.Green);
                     
                     await Task.Delay(COPY_FEEDBACK_DURATION_MS);
                     
@@ -283,7 +321,7 @@ namespace SuperWhisperWPF
             catch (Exception ex)
             {
                 Logger.Error($"Error copying to clipboard: {ex.Message}", ex);
-                UpdateStatus("Copy failed", Colors.Red);
+                UpdateStatus("Copy failed", System.Windows.Media.Colors.Red);
             }
         }
 
@@ -292,8 +330,7 @@ namespace SuperWhisperWPF
             ResultsTextBox.Clear();
             CopyButton.IsEnabled = false;
             ClearButton.IsEnabled = false;
-            UpdateWordCount();
-            UpdateStatus("Cleared", Colors.Gray);
+            UpdateStatus("Cleared", System.Windows.Media.Colors.Gray);
             Logger.Info("Results cleared");
         }
 
@@ -316,7 +353,7 @@ namespace SuperWhisperWPF
             // Create system tray icon
             trayIcon = new NotifyIcon();
             trayIcon.Icon = CreateTrayIcon();
-            trayIcon.Text = "SuperWhisper - Press Ctrl+Space to record";
+            trayIcon.Text = "Lumina - Press Ctrl+Space to record";
             trayIcon.Visible = true;
             
             // Double-click to show/hide window
@@ -351,7 +388,29 @@ namespace SuperWhisperWPF
         
         private System.Drawing.Icon CreateTrayIcon()
         {
-            // Create a simple icon programmatically
+            // Load the actual gradient orb icon
+            try
+            {
+                // Try to load lumina-icon.ico from the application directory
+                string iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "lumina-icon.ico");
+                if (System.IO.File.Exists(iconPath))
+                {
+                    return new System.Drawing.Icon(iconPath);
+                }
+
+                // Fallback: try to load from the project directory (for debug mode)
+                iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "lumina-icon.ico");
+                if (System.IO.File.Exists(iconPath))
+                {
+                    return new System.Drawing.Icon(iconPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Could not load lumina-icon.ico: {ex.Message}");
+            }
+
+            // Fallback to programmatic icon if file not found
             var bitmap = new Bitmap(TRAY_ICON_SIZE, TRAY_ICON_SIZE);
             using (var g = Graphics.FromImage(bitmap))
             {
@@ -360,6 +419,64 @@ namespace SuperWhisperWPF
                 g.FillEllipse(new SolidBrush(System.Drawing.Color.White), 5, 5, 6, 6);
             }
             return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
+        }
+
+        private void InitializeToastAnimation()
+        {
+            // Create pulse animation for toast indicator
+            var pulseAnimation = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames();
+            pulseAnimation.Duration = TimeSpan.FromSeconds(1);
+            pulseAnimation.RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever;
+
+            pulseAnimation.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1.0, TimeSpan.FromSeconds(0)));
+            pulseAnimation.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.5, TimeSpan.FromSeconds(0.5)));
+            pulseAnimation.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1.0, TimeSpan.FromSeconds(1)));
+
+            toastPulseAnimation = new System.Windows.Media.Animation.Storyboard();
+            System.Windows.Media.Animation.Storyboard.SetTarget(pulseAnimation, ToastPulseTransform);
+            System.Windows.Media.Animation.Storyboard.SetTargetProperty(pulseAnimation, new PropertyPath("ScaleX"));
+            toastPulseAnimation.Children.Add(pulseAnimation);
+
+            var pulseAnimationY = pulseAnimation.Clone();
+            System.Windows.Media.Animation.Storyboard.SetTarget(pulseAnimationY, ToastPulseTransform);
+            System.Windows.Media.Animation.Storyboard.SetTargetProperty(pulseAnimationY, new PropertyPath("ScaleY"));
+            toastPulseAnimation.Children.Add(pulseAnimationY);
+        }
+
+        private void ShowToast(string text, string time)
+        {
+            ToastText.Text = text;
+            ToastTime.Text = time;
+            ToastNotification.Visibility = Visibility.Visible;
+
+            if (text == "Recording")
+            {
+                ToastIndicator.Fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xEF, 0x44, 0x44)); // Red
+                toastPulseAnimation.Begin();
+                RecordingHintText.Text = "Recording... Press Ctrl+Space to stop";
+            }
+            else if (text == "Processing")
+            {
+                ToastIndicator.Fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x00, 0x84, 0xFF)); // Blue
+                toastPulseAnimation.Stop();
+                RecordingHintText.Text = "Processing audio...";
+            }
+        }
+
+        private void HideToast()
+        {
+            ToastNotification.Visibility = Visibility.Collapsed;
+            toastPulseAnimation.Stop();
+        }
+
+        private void UpdateRecordingTime(object sender, EventArgs e)
+        {
+            if (isRecording)
+            {
+                var elapsed = DateTime.Now - recordingStartTime;
+                var timeString = $"{elapsed.Minutes:00}:{elapsed.Seconds:00}";
+                ToastTime.Text = timeString;
+            }
         }
 
         protected override void OnClosing(CancelEventArgs e)
@@ -371,7 +488,7 @@ namespace SuperWhisperWPF
                 this.Hide();
                 
                 // Show notification
-                trayIcon.ShowBalloonTip(BALLOON_TIP_TIMEOUT_MS, "SuperWhisper",
+                trayIcon.ShowBalloonTip(BALLOON_TIP_TIMEOUT_MS, "Lumina",
                     "Application minimized to tray. Double-click the tray icon to restore. Ctrl+Space still works!",
                     ToolTipIcon.Info);
                 
@@ -388,7 +505,7 @@ namespace SuperWhisperWPF
                 this.Hide();
                 
                 // Show notification
-                trayIcon.ShowBalloonTip(BALLOON_TIP_TIMEOUT_MS, "SuperWhisper",
+                trayIcon.ShowBalloonTip(BALLOON_TIP_TIMEOUT_MS, "Lumina",
                     "Application minimized to tray. Double-click the tray icon to restore. Ctrl+Space still works!",
                     ToolTipIcon.Info);
                 
@@ -402,13 +519,25 @@ namespace SuperWhisperWPF
         {
             try
             {
-                Logger.Info("Shutting down SuperWhisper...");
+                Logger.Info("Shutting down Lumina...");
 
-                // Stop and dispose timer first
+                // Stop and dispose timers first
                 if (typingTimer != null)
                 {
                     typingTimer.Stop();
                     typingTimer = null;
+                }
+
+                if (recordingTimer != null)
+                {
+                    recordingTimer.Stop();
+                    recordingTimer = null;
+                }
+
+                if (toastPulseAnimation != null)
+                {
+                    toastPulseAnimation.Stop();
+                    toastPulseAnimation = null;
                 }
 
                 // Dispose tray icon
@@ -419,12 +548,7 @@ namespace SuperWhisperWPF
                     trayIcon = null;
                 }
 
-                // Close overlay window
-                if (recordingOverlay != null)
-                {
-                    recordingOverlay.Close();
-                    recordingOverlay = null;
-                }
+                // Toast notification is part of main window, no separate disposal needed
 
                 // Dispose hotkey
                 if (globalHotkey != null)
@@ -447,7 +571,7 @@ namespace SuperWhisperWPF
                     whisperEngine = null;
                 }
 
-                Logger.Info("SuperWhisper shutdown complete");
+                Logger.Info("Lumina shutdown complete");
             }
             catch (Exception ex)
             {
