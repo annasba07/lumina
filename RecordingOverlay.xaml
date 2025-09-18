@@ -10,9 +10,9 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterScreen">
 
-    <Border Background="#E0000000" CornerRadius="20" BorderBrush="#40FFFFFF" BorderThickness="1" Margin="20">
+    <Border Background="#F5000000" CornerRadius="16" BorderBrush="#30FFFFFF" BorderThickness="1" Margin="20">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.5" Color="Black"/>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="8" Opacity="0.6" Color="Black"/>
         </Border.Effect>
         
         <Grid Margin="32,24">
@@ -28,31 +28,41 @@
                            Glyph="&#xE720;" 
                            FontSize="18" 
                            Foreground="#0078D4" Margin="0,0,12,0"/>
-                <TextBlock x:Name="StatusText" 
-                           Text="🎤 Recording - Press Ctrl+Space to stop"
-                           FontSize="14" FontWeight="SemiBold"
-                           Foreground="White"/>
+                <TextBlock x:Name="StatusText"
+                           FontSize="14" FontWeight="Medium"
+                           Foreground="#FFFFFF">
+                    <Run Text="🎤 Recording - Press " />
+                    <Run Text="Ctrl+Space" FontFamily="Consolas" Background="#20FFFFFF" />
+                    <Run Text=" to stop" />
+                </TextBlock>
             </StackPanel>
             
             <!-- Modern Waveform Visualization -->
-            <Canvas x:Name="WaveformCanvas" 
-                    Grid.Row="1" 
-                    Height="50" 
-                    Background="Transparent">
-                
+            <Grid Grid.Row="1" Height="50">
                 <!-- Background glow effect -->
                 <Ellipse x:Name="BackgroundGlow"
-                         Width="100" Height="30"
-                         Fill="#40007ACC"
-                         Canvas.Left="140" Canvas.Top="10">
+                         Width="120" Height="40"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#600084FF" Offset="0"/>
+                            <GradientStop Color="#00000000" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
                     <Ellipse.RenderTransform>
-                        <ScaleTransform x:Name="GlowScale" ScaleX="1" ScaleY="1"/>
+                        <ScaleTransform x:Name="GlowScale" ScaleX="1" ScaleY="1" CenterX="60" CenterY="20"/>
                     </Ellipse.RenderTransform>
                 </Ellipse>
-                
-                <!-- Waveform bars will be added programmatically -->
-                
-            </Canvas>
+
+                <!-- Waveform bars -->
+                <Canvas x:Name="WaveformCanvas"
+                        Height="50"
+                        Background="Transparent"
+                        HorizontalAlignment="Center">
+                    <!-- Waveform bars will be added programmatically -->
+                </Canvas>
+            </Grid>
         </Grid>
     </Border>
 </Window>

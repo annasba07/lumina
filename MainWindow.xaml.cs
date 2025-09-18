@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Windows.Forms;
+using Velopack;
 
 namespace SuperWhisperWPF
 {
@@ -39,6 +40,40 @@ namespace SuperWhisperWPF
         {
             InitializeComponent();
             InitializeAsync();
+        }
+
+        // Custom title bar handlers
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2)
+            {
+                if (WindowState == WindowState.Normal)
+                    WindowState = WindowState.Maximized;
+                else
+                    WindowState = WindowState.Normal;
+            }
+            else
+            {
+                this.DragMove();
+            }
+        }
+
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (WindowState == WindowState.Normal)
+                WindowState = WindowState.Maximized;
+            else
+                WindowState = WindowState.Normal;
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
         }
 
         private async void InitializeAsync()
@@ -88,18 +123,10 @@ namespace SuperWhisperWPF
                 
                 UpdateStatus("Ready", System.Windows.Media.Colors.Green);
 
-            // Clear placeholder text when app is ready
-            if (ResultsTextBox.Text == "Your transcriptions will appear here...")
-            {
-                ResultsTextBox.Text = "";
-                ResultsTextBox.Foreground = new SolidColorBrush(System.Windows.Media.Colors.Gray);
-                ResultsTextBox.GotFocus += (s, e) => {
-                    if (string.IsNullOrWhiteSpace(ResultsTextBox.Text))
-                    {
-                        ResultsTextBox.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x19, 0x19, 0x19));
-                    }
-                };
-            }
+            // Initialize empty state
+            ResultsTextBox.Text = "";
+            EmptyStatePanel.Visibility = Visibility.Visible;
+            WordCountBorder.Visibility = Visibility.Collapsed;
                 isInitialized = true;
                 
                 Logger.Info("Lumina initialization completed successfully");
@@ -194,7 +221,8 @@ namespace SuperWhisperWPF
                         AppendTranscription(transcription);
                         UpdateStatus("Ready", System.Windows.Media.Colors.Green);
                         HideToast();
-                        RecordingHintText.Text = "Press Ctrl+Space to start recording";
+                        AudioLevelBorder.Visibility = Visibility.Collapsed;
+                        RecordingHintText.Text = " to start";
                     });
                     
                     Logger.Info($"Transcription completed: '{transcription}'");
@@ -205,12 +233,12 @@ namespace SuperWhisperWPF
                     {
                         UpdateStatus("No speech", System.Windows.Media.Colors.Orange);
                         HideToast();
-                        RecordingHintText.Text = "No speech detected - Press Ctrl+Space to try again";
+                        RecordingHintText.Text = " to try again";
 
                         // Reset hint text after delay
                         Task.Delay(3000).ContinueWith(t =>
                         {
-                            Dispatcher.Invoke(() => RecordingHintText.Text = "Press Ctrl+Space to start recording");
+                            Dispatcher.Invoke(() => RecordingHintText.Text = " to start");
                         });
                     });
                     
@@ -224,12 +252,12 @@ namespace SuperWhisperWPF
                 {
                     UpdateStatus("Error", System.Windows.Media.Colors.Red);
                     HideToast();
-                    RecordingHintText.Text = "Error processing audio - Press Ctrl+Space to try again";
+                    RecordingHintText.Text = " to try again";
 
                     // Reset hint text after delay
                     Task.Delay(3000).ContinueWith(t =>
                     {
-                        Dispatcher.Invoke(() => RecordingHintText.Text = "Press Ctrl+Space to start recording");
+                        Dispatcher.Invoke(() => RecordingHintText.Text = " to start");
                     });
                 });
             }
@@ -237,8 +265,30 @@ namespace SuperWhisperWPF
 
         private void OnAudioLevelChanged(object sender, float level)
         {
-            // Toast notification doesn't need audio level updates
-            // This could be used for other visual feedback if needed
+            Dispatcher.Invoke(() =>
+            {
+                // Show audio level indicator when recording
+                if (isRecording)
+                {
+                    AudioLevelBorder.Visibility = Visibility.Visible;
+
+                    // Animate audio level bars
+                    var barCount = 10;
+                    for (int i = 1; i <= barCount; i++)
+                    {
+                        var bar = FindName($"AudioLevel{i}") as System.Windows.Shapes.Rectangle;
+                        if (bar != null)
+                        {
+                            var targetOpacity = level > (i - 1) * 0.1 ? 1.0 : 0.3;
+                            bar.Opacity = targetOpacity;
+                        }
+                    }
+                }
+                else
+                {
+                    AudioLevelBorder.Visibility = Visibility.Collapsed;
+                }
+            });
         }
 
         private void OnApproachingLimit(object sender, int remainingSeconds)
@@ -247,7 +297,7 @@ namespace SuperWhisperWPF
             Dispatcher.Invoke(() =>
             {
                 var remainingMinutes = remainingSeconds / 60.0;
-                RecordingHintText.Text = $"Warning: {remainingMinutes:F1} minutes remaining";
+                RecordingHintText.Text = $" ({remainingMinutes:F1} min left)";
                 UpdateStatus("Warning", System.Windows.Media.Colors.Orange);
             });
         }
@@ -278,13 +328,28 @@ namespace SuperWhisperWPF
             // Enable buttons
             CopyButton.IsEnabled = true;
             ClearButton.IsEnabled = true;
+
+            // Update word count
+            UpdateWordCount();
             
             // Word count removed in minimal UI
         }
 
         private void UpdateWordCount()
         {
-            // Word count removed in minimal UI design
+            var text = ResultsTextBox.Text;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                WordCountBorder.Visibility = Visibility.Collapsed;
+                EmptyStatePanel.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                EmptyStatePanel.Visibility = Visibility.Collapsed;
+                WordCountBorder.Visibility = Visibility.Visible;
+                var words = text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                WordCountText.Text = words == 1 ? "1 word" : $"{words} words";
+            }
         }
 
         private async void CopyButton_Click(object sender, RoutedEventArgs e)
@@ -331,6 +396,7 @@ namespace SuperWhisperWPF
             CopyButton.IsEnabled = false;
             ClearButton.IsEnabled = false;
             UpdateStatus("Cleared", System.Windows.Media.Colors.Gray);
+            UpdateWordCount();
             Logger.Info("Results cleared");
         }
 
@@ -453,13 +519,13 @@ namespace SuperWhisperWPF
             {
                 ToastIndicator.Fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xEF, 0x44, 0x44)); // Red
                 toastPulseAnimation.Begin();
-                RecordingHintText.Text = "Recording... Press Ctrl+Space to stop";
+                RecordingHintText.Text = " to stop";
             }
             else if (text == "Processing")
             {
                 ToastIndicator.Fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x00, 0x84, 0xFF)); // Blue
                 toastPulseAnimation.Stop();
-                RecordingHintText.Text = "Processing audio...";
+                RecordingHintText.Text = " processing...";
             }
         }
 

@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <PackageReference Include="ModernWpfUI" Version="0.9.6" />
+    <PackageReference Include="Velopack" Version="0.0.1298" />
     <PackageReference Include="Whisper.net" Version="1.4.7" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.4.7" />
     <PackageReference Include="NAudio" Version="2.2.1" />
