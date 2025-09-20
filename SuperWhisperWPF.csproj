@@ -7,13 +7,27 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>SuperWhisperWPF</RootNamespace>
     <AssemblyName>Lumina</AssemblyName>
-    <ApplicationIcon>lumina-icon.ico</ApplicationIcon>
+    <ApplicationIcon>assets\icons\lumina-icon.ico</ApplicationIcon>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="lumina-icon.ico">
+    <Content Include="assets\icons\lumina-icon.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="assets\models\ggml-base.en.bin">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="src\**\*.cs" />
+    <Page Include="src\Views\*.xaml" />
+    <ApplicationDefinition Include="src\App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
   </ItemGroup>
 
   <ItemGroup>
