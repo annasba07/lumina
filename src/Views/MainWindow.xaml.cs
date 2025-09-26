@@ -38,6 +38,7 @@ namespace SuperWhisperWPF
         {
             InitializeComponent();
             InitializeAsync();
+            InitializeTheme();
         }
 
         // Custom title bar handlers
@@ -72,6 +73,30 @@ namespace SuperWhisperWPF
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
+        }
+
+        private void InitializeTheme()
+        {
+            // Initialize theme service and update icon
+            var themeService = ThemeService.Instance;
+            UpdateThemeIcon(themeService.IsDarkMode);
+
+            // Subscribe to theme changes
+            themeService.ThemeChanged += (s, theme) =>
+            {
+                Dispatcher.Invoke(() => UpdateThemeIcon(theme == ModernWpf.ApplicationTheme.Dark));
+            };
+        }
+
+        private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+        {
+            ThemeService.Instance.ToggleTheme();
+        }
+
+        private void UpdateThemeIcon(bool isDarkMode)
+        {
+            // Update icon based on theme (moon for dark, sun for light)
+            ThemeIcon.Text = isDarkMode ? "\uE708" : "\uE793"; // Moon : Sun icons
         }
 
         private async void InitializeAsync()

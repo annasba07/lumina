@@ -13,8 +13,8 @@
 
     <Border x:Name="WindowBorder"
             CornerRadius="12"
-            Background="#FFFFFF"
-            BorderBrush="#E5E7EB"
+            Background="{DynamicResource BackgroundBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.12" Color="#000000"/>
@@ -46,6 +46,15 @@
 
                 <!-- Window Controls -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,0,4,0">
+                    <Button x:Name="ThemeToggleButton"
+                            Width="46" Height="32"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="ThemeToggleButton_Click"
+                            ToolTip="Toggle Dark Mode"
+                            Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
+                        <TextBlock x:Name="ThemeIcon" Text="&#xE793;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </Button>
                     <Button x:Name="MinimizeButton"
                             Width="46" Height="32"
                             Background="Transparent"

@@ -9,18 +9,19 @@
                 <ui:ThemeResources RequestedTheme="Light" />
                 <ui:XamlControlsResources />
 
-                <!-- Ultra Minimal Theme -->
+                <!-- Ultra Minimal Theme with Dark Mode Support -->
                 <ResourceDictionary>
-                    <!-- Colors -->
-                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#FFFFFF"/>
-                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF"/>
-                    <SolidColorBrush x:Key="BorderBrush" Color="#E5E5E5"/>
-                    <SolidColorBrush x:Key="AccentBrush" Color="#0084FF"/>
-                    <SolidColorBrush x:Key="AccentHoverBrush" Color="#0073E6"/>
-                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#191919"/>
-                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#787774"/>
-                    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#9B9A97"/>
-                    <SolidColorBrush x:Key="SuccessBrush" Color="#0F7938"/>
+                    <!-- Dynamic Theme Colors (updated by ThemeService) -->
+                    <SolidColorBrush x:Key="BackgroundBrush" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="SurfaceBrush" Color="#F9FAFB"/>
+                    <SolidColorBrush x:Key="BorderBrush" Color="#E5E7EB"/>
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#111827"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6B7280"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#3B82F6"/>
+                    <SolidColorBrush x:Key="AccentHoverBrush" Color="#2563EB"/>
+
+                    <!-- Static Colors (same in both themes) -->
+                    <SolidColorBrush x:Key="SuccessBrush" Color="#10B981"/>
                     <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
                     <SolidColorBrush x:Key="ErrorBrush" Color="#EF4444"/>
 

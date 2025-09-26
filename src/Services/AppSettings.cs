@@ -24,6 +24,7 @@ namespace SuperWhisperWPF
         public bool MinimizeToTray { get; set; } = true;
         public bool ShowBalloonNotifications { get; set; } = true;
         public int TranscriptionTimeout { get; set; } = 30000; // 30 seconds
+        public string Theme { get; set; } = "Light"; // Light or Dark
 
         // Whisper settings
         public string Language { get; set; } = "en";
