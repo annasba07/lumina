@@ -50,11 +50,15 @@ namespace SuperWhisperWPF
                     whisperFactory = WhisperFactory.FromPath(modelPath);
                     Logger.Info("✅ WhisperFactory created successfully");
                     
-                    // Create processor with configuration from settings
+                    // Create processor with speed optimizations
                     processor = whisperFactory.CreateBuilder()
                         .WithLanguage(settings.Language)
                         .WithPrompt("") // No initial prompt
-                        .WithTemperature(settings.Temperature)
+                        .WithTemperature(0.0f) // Use greedy decoding for speed
+                        .WithSpeedUp2x() // Enable 2x speedup
+                        .WithThreads(Environment.ProcessorCount) // Use all CPU cores
+                        .WithNoContext() // Disable context for speed
+                        .WithSingleSegment() // Process as single segment
                         .Build();
                         
                     Logger.Info("✅ WhisperProcessor created successfully");
