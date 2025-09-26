@@ -100,9 +100,9 @@ namespace SuperWhisperWPF
                 });
             }
 
-            // Create and show the main window with proper native features
-            Window mainWindow = new MainWindow();
-            System.Diagnostics.Debug.WriteLine("Starting Lumina with native WPF UI");
+            // Create and show the hybrid window with WebView2 and native features
+            Window mainWindow = new HybridMainWindow();
+            System.Diagnostics.Debug.WriteLine("Starting Lumina with hybrid WebView2 UI");
 
             MainWindow = mainWindow;
             mainWindow.Show();

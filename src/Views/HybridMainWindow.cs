@@ -2,6 +2,10 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
@@ -12,8 +16,8 @@ namespace SuperWhisperWPF.Views
 {
     /// <summary>
     /// Hybrid window that uses WebView2 for modern HTML/CSS/JS UI
-    /// while keeping native C# backend for performance.
-    /// This gives us the best of both worlds - beautiful UI + native speed.
+    /// while keeping native C# backend for performance and native window features.
+    /// This gives us the best of both worlds - beautiful UI + native functionality.
     /// </summary>
     public class HybridMainWindow : Window
     {
@@ -23,36 +27,168 @@ namespace SuperWhisperWPF.Views
         private RecordingModeManager modeManager;
         private StreamingAudioProcessor streamingProcessor;
         private GlobalHotkey globalHotkey;
+        private NotifyIcon trayIcon;
+        internal bool isRecording = false;
 
         public HybridMainWindow()
         {
             InitializeWindow();
-            InitializeWebView();
+            InitializeContent();
             InitializeBackend();
+            InitializeSystemTray();
         }
 
         private void InitializeWindow()
         {
-            Title = "Lumina - Modern UI";
-            Width = 800;
+            Title = "Lumina";
+            Width = 440;
             Height = 600;
+            MinWidth = 380;
+            MinHeight = 500;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
-            WindowStyle = WindowStyle.None; // Frameless window
+            WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
-            Background = System.Windows.Media.Brushes.Transparent;
+            Background = Brushes.Transparent;
+            ResizeMode = ResizeMode.CanResize;
         }
 
-        private void InitializeWebView()
+        private void InitializeContent()
         {
-            webView = new WebView2
+            // Create main border with rounded corners
+            var border = new Border
             {
-                Name = "webView"
+                CornerRadius = new CornerRadius(12),
+                Background = new SolidColorBrush(Color.FromRgb(249, 250, 251)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(229, 231, 235)),
+                BorderThickness = new Thickness(1)
             };
 
-            Content = webView;
+            // Add drop shadow
+            border.Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 30,
+                ShadowDepth = 0,
+                Opacity = 0.12,
+                Color = Colors.Black
+            };
+
+            // Create grid for title bar and content
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(48) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            // Create custom title bar
+            var titleBar = CreateTitleBar();
+            Grid.SetRow(titleBar, 0);
+            grid.Children.Add(titleBar);
+
+            // Create WebView2 for main content
+            webView = new WebView2
+            {
+                Name = "webView",
+                Margin = new Thickness(0)
+            };
+            Grid.SetRow(webView, 1);
+            grid.Children.Add(webView);
+
+            border.Child = grid;
+            Content = border;
 
             // Initialize WebView2
             InitializeAsync();
+        }
+
+        private Grid CreateTitleBar()
+        {
+            var titleBar = new Grid { Background = Brushes.Transparent };
+            titleBar.MouseLeftButtonDown += TitleBar_MouseLeftButtonDown;
+
+            titleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            titleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            titleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // App icon and title
+            var titlePanel = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                Margin = new Thickness(16, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            titlePanel.Children.Add(new TextBlock
+            {
+                Text = "✨",
+                FontSize = 16,
+                Margin = new Thickness(0, 0, 8, 0)
+            });
+
+            titlePanel.Children.Add(new TextBlock
+            {
+                Text = "Lumina",
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(17, 24, 39)),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            Grid.SetColumn(titlePanel, 0);
+            titleBar.Children.Add(titlePanel);
+
+            // Window controls
+            var controlsPanel = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 0, 4, 0)
+            };
+
+            // Minimize button
+            var minimizeBtn = CreateWindowButton("─");
+            minimizeBtn.Click += (s, e) => WindowState = WindowState.Minimized;
+            controlsPanel.Children.Add(minimizeBtn);
+
+            // Close button
+            var closeBtn = CreateWindowButton("✕");
+            closeBtn.Click += (s, e) => Close();
+            controlsPanel.Children.Add(closeBtn);
+
+            Grid.SetColumn(controlsPanel, 2);
+            titleBar.Children.Add(controlsPanel);
+
+            return titleBar;
+        }
+
+        private System.Windows.Controls.Button CreateWindowButton(string content)
+        {
+            var button = new System.Windows.Controls.Button
+            {
+                Content = content,
+                Width = 46,
+                Height = 32,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)),
+                FontSize = 14,
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+
+            // Add hover effect
+            button.MouseEnter += (s, e) => button.Background = new SolidColorBrush(Color.FromArgb(25, 0, 0, 0));
+            button.MouseLeave += (s, e) => button.Background = Brushes.Transparent;
+
+            return button;
+        }
+
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2)
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            }
+            else
+            {
+                DragMove();
+            }
         }
 
         private async void InitializeAsync()
@@ -106,9 +242,9 @@ namespace SuperWhisperWPF.Views
                 // Make bridge methods easier to call
                 window.lumina = chrome.webview.hostObjects.lumina;
 
-                // Add keyboard shortcuts
+                // Add keyboard shortcuts - now using Alt+Shift+R
                 document.addEventListener('keydown', (e) => {
-                    if (e.ctrlKey && e.code === 'Space') {
+                    if (e.altKey && e.shiftKey && e.code === 'KeyR') {
                         e.preventDefault();
                         window.lumina.toggleRecording();
                     }
@@ -136,6 +272,9 @@ namespace SuperWhisperWPF.Views
                 case "export":
                     ExportTranscription(data.format.ToString());
                     break;
+                case "toggleRecording":
+                    ToggleRecording();
+                    break;
             }
         }
 
@@ -161,10 +300,84 @@ namespace SuperWhisperWPF.Views
             globalHotkey = HotkeyExtensions.CreateAltShiftR(this, ToggleRecording);
         }
 
+        private void InitializeSystemTray()
+        {
+            // Create system tray icon
+            trayIcon = new NotifyIcon();
+            trayIcon.Icon = CreateTrayIcon();
+            trayIcon.Text = "Lumina - Press Alt+Shift+R to record";
+            trayIcon.Visible = true;
+
+            // Double-click to show/hide window
+            trayIcon.DoubleClick += (s, e) => {
+                if (WindowState == WindowState.Minimized)
+                {
+                    Show();
+                    WindowState = WindowState.Normal;
+                }
+                else
+                {
+                    Hide();
+                }
+            };
+
+            // Create context menu
+            var contextMenu = new ContextMenuStrip();
+
+            contextMenu.Items.Add("Show/Hide", null, (s, e) => {
+                if (WindowState == WindowState.Minimized || !IsVisible)
+                {
+                    Show();
+                    WindowState = WindowState.Normal;
+                }
+                else
+                {
+                    Hide();
+                }
+            });
+
+            contextMenu.Items.Add("-");
+
+            contextMenu.Items.Add("Exit", null, (s, e) => {
+                System.Windows.Application.Current.Shutdown();
+            });
+
+            trayIcon.ContextMenuStrip = contextMenu;
+        }
+
+        private System.Drawing.Icon CreateTrayIcon()
+        {
+            try
+            {
+                var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "lumina-icon.ico");
+                if (File.Exists(iconPath))
+                {
+                    return new System.Drawing.Icon(iconPath);
+                }
+            }
+            catch { }
+
+            // Fallback to system icon
+            return System.Drawing.SystemIcons.Application;
+        }
+
         public void ToggleRecording()
         {
-            // Call JavaScript to update UI
-            _ = webView.CoreWebView2.ExecuteScriptAsync("window.handleRecord()");
+            isRecording = !isRecording;
+
+            if (isRecording)
+            {
+                audioCapture.StartRecording();
+                Logger.Info("Recording started");
+            }
+            else
+            {
+                audioCapture.StopRecording();
+                Logger.Info("Recording stopped");
+            }
+
+            // Update UI through JavaScript
+            _ = webView?.CoreWebView2?.ExecuteScriptAsync($"window.handleRecord && window.handleRecord()");
         }
 
         private async void OnSpeechEnded(object sender, byte[] audioData)
@@ -173,31 +386,31 @@ namespace SuperWhisperWPF.Views
 
             // Send result to JavaScript
             await webView.CoreWebView2.ExecuteScriptAsync($@"
-                window.setTranscription('{JsonConvert.ToString(transcription)}');
+                window.setTranscription && window.setTranscription('{JsonConvert.ToString(transcription)}');
             ");
         }
 
         private void OnAudioLevelChanged(object sender, float level)
         {
             // Update audio visualizer in UI
-            _ = webView.CoreWebView2.ExecuteScriptAsync($@"
-                window.setAudioLevel({level});
+            _ = webView?.CoreWebView2?.ExecuteScriptAsync($@"
+                window.setAudioLevel && window.setAudioLevel({level});
             ");
         }
 
         private void OnPartialTranscription(object sender, string text)
         {
             // Show partial text while speaking
-            _ = webView.CoreWebView2.ExecuteScriptAsync($@"
-                window.setPartialText('{JsonConvert.ToString(text)}');
+            _ = webView?.CoreWebView2?.ExecuteScriptAsync($@"
+                window.setPartialText && window.setPartialText('{JsonConvert.ToString(text)}');
             ");
         }
 
         private void OnFinalTranscription(object sender, string text)
         {
             // Show final transcription
-            _ = webView.CoreWebView2.ExecuteScriptAsync($@"
-                window.setTranscription('{JsonConvert.ToString(text)}');
+            _ = webView?.CoreWebView2?.ExecuteScriptAsync($@"
+                window.setTranscription && window.setTranscription('{JsonConvert.ToString(text)}');
             ");
         }
 
@@ -207,53 +420,391 @@ namespace SuperWhisperWPF.Views
             // Implementation here...
         }
 
+        protected override void OnClosed(EventArgs e)
+        {
+            // Cleanup
+            trayIcon?.Dispose();
+            globalHotkey?.Dispose();
+            audioCapture?.Dispose();
+            whisperEngine?.Dispose();
+            base.OnClosed(e);
+        }
+
         private string GetEmbeddedHtml()
         {
-            // Return the HTML as a string if file not found
+            // Return HTML that exactly replicates the native WPF UI
             return @"<!DOCTYPE html>
 <html>
 <head>
     <title>Lumina</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            font-family: -apple-system, 'Segoe UI', sans-serif;
+            background: #F9FAFB;
+            color: #111827;
             height: 100vh;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        /* Record Button Container */
+        .record-section {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .record-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .container {
+
+        .record-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+        }
+
+        .record-button.recording {
+            animation: pulse 1.5s infinite;
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .record-icon {
+            font-size: 40px;
+        }
+
+        /* Status Text */
+        .status-text {
             text-align: center;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #6B7280;
         }
-        h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
+
+        .shortcut-hint {
+            background: #E5E7EB;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 5px;
         }
-        button {
+
+        /* Mode Selection */
+        .modes-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
             background: white;
-            color: #667eea;
-            border: none;
-            padding: 12px 24px;
-            font-size: 18px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .mode-button {
+            padding: 12px;
+            background: white;
+            border: 2px solid #E5E7EB;
             border-radius: 8px;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 14px;
         }
-        button:hover {
-            transform: scale(1.05);
+
+        .mode-button:hover {
+            border-color: #667EEA;
+            background: #F3F4F6;
+        }
+
+        .mode-button.active {
+            border-color: #667EEA;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+        }
+
+        /* Transcription Area */
+        .transcription-container {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+
+        .transcription-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .transcription-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .export-btn {
+            padding: 6px 12px;
+            background: #F3F4F6;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .export-btn:hover {
+            background: #E5E7EB;
+        }
+
+        .transcription-text {
+            min-height: 100px;
+            padding: 15px;
+            background: #F9FAFB;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #374151;
+        }
+
+        .transcription-text:empty::before {
+            content: 'Your transcription will appear here...';
+            color: #9CA3AF;
+            font-style: italic;
+        }
+
+        /* Audio Visualizer */
+        .audio-level {
+            height: 3px;
+            background: #E5E7EB;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .audio-level-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667EEA 0%, #764BA2 100%);
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        /* Info Cards */
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #667EEA;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #6B7280;
+            text-transform: uppercase;
+            margin-top: 4px;
         }
     </style>
 </head>
 <body>
-    <div class='container'>
-        <h1>🎙️ Lumina</h1>
-        <p>Modern transcription with native performance</p>
-        <button onclick='window.lumina.startRecording()'>Start Recording</button>
+    <!-- Record Button -->
+    <div class='record-section'>
+        <button id='recordBtn' class='record-button' onclick='handleRecord()'>
+            <span class='record-icon'>🎙️</span>
+        </button>
     </div>
+
+    <!-- Status -->
+    <div class='status-text'>
+        <span id='statusText'>Ready to record</span>
+        <span class='shortcut-hint'>Alt+Shift+R</span>
+    </div>
+
+    <!-- Audio Level Indicator -->
+    <div class='audio-level'>
+        <div id='audioLevel' class='audio-level-bar'></div>
+    </div>
+
+    <!-- Mode Selection -->
+    <div class='modes-panel'>
+        <button class='mode-button active' onclick='setMode(""quick"")'>
+            ⚡ Quick
+        </button>
+        <button class='mode-button' onclick='setMode(""meeting"")'>
+            👥 Meeting
+        </button>
+        <button class='mode-button' onclick='setMode(""dictation"")'>
+            ✍️ Dictation
+        </button>
+    </div>
+
+    <!-- Transcription Area -->
+    <div class='transcription-container'>
+        <div class='transcription-header'>
+            <div class='transcription-title'>Transcription</div>
+            <div class='export-buttons'>
+                <button class='export-btn' onclick='exportText(""copy"")'>📋 Copy</button>
+                <button class='export-btn' onclick='exportText(""save"")'>💾 Save</button>
+            </div>
+        </div>
+        <div id='transcriptionText' class='transcription-text'></div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class='info-cards'>
+        <div class='info-card'>
+            <div id='wordCount' class='info-value'>0</div>
+            <div class='info-label'>Words</div>
+        </div>
+        <div class='info-card'>
+            <div id='duration' class='info-value'>0:00</div>
+            <div class='info-label'>Duration</div>
+        </div>
+        <div class='info-card'>
+            <div id='latency' class='info-value'>0ms</div>
+            <div class='info-label'>Latency</div>
+        </div>
+    </div>
+
+    <script>
+        let isRecording = false;
+        let currentMode = 'quick';
+        let recordingStartTime = null;
+        let recordingTimer = null;
+
+        function handleRecord() {
+            isRecording = !isRecording;
+            const btn = document.getElementById('recordBtn');
+            const status = document.getElementById('statusText');
+
+            if (isRecording) {
+                btn.classList.add('recording');
+                status.textContent = 'Recording...';
+                recordingStartTime = Date.now();
+                startTimer();
+                window.lumina?.startRecording();
+            } else {
+                btn.classList.remove('recording');
+                status.textContent = 'Processing...';
+                stopTimer();
+                window.lumina?.stopRecording();
+                setTimeout(() => {
+                    status.textContent = 'Ready to record';
+                }, 2000);
+            }
+        }
+
+        function startTimer() {
+            recordingTimer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('duration').textContent =
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }, 100);
+        }
+
+        function stopTimer() {
+            if (recordingTimer) {
+                clearInterval(recordingTimer);
+                recordingTimer = null;
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            window.lumina?.setMode(mode);
+        }
+
+        function exportText(format) {
+            const text = document.getElementById('transcriptionText').textContent;
+            if (format === 'copy') {
+                navigator.clipboard.writeText(text);
+                alert('Copied to clipboard!');
+            } else {
+                // Save functionality
+                const blob = new Blob([text], {type: 'text/plain'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'transcription.txt';
+                a.click();
+            }
+        }
+
+        // Bridge functions
+        window.setTranscription = (text) => {
+            const transcriptionEl = document.getElementById('transcriptionText');
+            transcriptionEl.textContent = text;
+
+            // Update word count
+            const words = text.trim().split(/\s+/).length;
+            document.getElementById('wordCount').textContent = words;
+        };
+
+        window.setPartialText = (text) => {
+            const transcriptionEl = document.getElementById('transcriptionText');
+            transcriptionEl.innerHTML = `<span style='opacity: 0.7'>${text}</span>`;
+        };
+
+        window.setAudioLevel = (level) => {
+            document.getElementById('audioLevel').style.width = `${level * 100}%`;
+        };
+
+        // Handle hotkey
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && e.shiftKey && e.code === 'KeyR') {
+                e.preventDefault();
+                handleRecord();
+            }
+        });
+    </script>
 </body>
 </html>";
         }
@@ -276,8 +827,10 @@ namespace SuperWhisperWPF.Views
         {
             window.Dispatcher.Invoke(() =>
             {
-                // Start recording logic
-                Logger.Info("Recording started from JavaScript");
+                if (!window.isRecording)
+                {
+                    window.ToggleRecording();
+                }
             });
         }
 
@@ -285,8 +838,10 @@ namespace SuperWhisperWPF.Views
         {
             window.Dispatcher.Invoke(() =>
             {
-                // Stop recording logic
-                Logger.Info("Recording stopped from JavaScript");
+                if (window.isRecording)
+                {
+                    window.ToggleRecording();
+                }
             });
         }
 
@@ -307,7 +862,7 @@ namespace SuperWhisperWPF.Views
         {
             return JsonConvert.SerializeObject(new
             {
-                isRecording = false,
+                isRecording = window.isRecording,
                 mode = "quick",
                 model = "base"
             });
