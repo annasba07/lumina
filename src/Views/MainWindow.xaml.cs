@@ -410,7 +410,7 @@ namespace SuperWhisperWPF
                     };
                     CopyButton.Background = new SolidColorBrush(System.Windows.Media.Colors.Green);
                     
-                    await Task.Delay(COPY_FEEDBACK_DURATION_MS);
+                    await Task.Delay(Constants.UI.COPY_FEEDBACK_DURATION_MS);
                     
                     CopyButton.Content = originalContent;
                     CopyButton.Background = originalBackground;
@@ -541,7 +541,7 @@ namespace SuperWhisperWPF
             }
 
             // Fallback to programmatic icon if file not found
-            var bitmap = new Bitmap(TRAY_ICON_SIZE, TRAY_ICON_SIZE);
+            var bitmap = new Bitmap(Constants.UI.TRAY_ICON_SIZE, Constants.UI.TRAY_ICON_SIZE);
             using (var g = Graphics.FromImage(bitmap))
             {
                 g.Clear(System.Drawing.Color.Transparent);
@@ -618,7 +618,7 @@ namespace SuperWhisperWPF
                 this.Hide();
                 
                 // Show notification
-                trayIcon.ShowBalloonTip(BALLOON_TIP_TIMEOUT_MS, "Lumina",
+                trayIcon.ShowBalloonTip(Constants.UI.BALLOON_TIP_TIMEOUT_MS, "Lumina",
                     "Application minimized to tray. Double-click the tray icon to restore. Ctrl+Space still works!",
                     ToolTipIcon.Info);
                 
@@ -635,7 +635,7 @@ namespace SuperWhisperWPF
                 this.Hide();
                 
                 // Show notification
-                trayIcon.ShowBalloonTip(BALLOON_TIP_TIMEOUT_MS, "Lumina",
+                trayIcon.ShowBalloonTip(Constants.UI.BALLOON_TIP_TIMEOUT_MS, "Lumina",
                     "Application minimized to tray. Double-click the tray icon to restore. Ctrl+Space still works!",
                     ToolTipIcon.Info);
                 

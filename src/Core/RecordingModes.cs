@@ -354,7 +354,7 @@ namespace SuperWhisperWPF.Core
             {
                 var settings = AppSettings.Instance;
                 settings.ActiveRecordingMode = activeModeld;
-                settings.SaveSettings();
+                settings.Save();
             }
             catch (Exception ex)
             {

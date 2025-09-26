@@ -143,7 +143,7 @@ namespace SuperWhisperWPF.Services
             {
                 var settings = AppSettings.Instance;
                 settings.Theme = theme.ToString();
-                settings.SaveSettings();
+                settings.Save();
             }
             catch (Exception ex)
             {

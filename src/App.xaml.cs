@@ -4,6 +4,7 @@ using Velopack;
 using System;
 using System.Threading.Tasks;
 using SuperWhisperWPF.Core;
+using SuperWhisperWPF.Views;
 
 namespace SuperWhisperWPF
 {
@@ -47,6 +48,37 @@ namespace SuperWhisperWPF
 
             // Set light theme for modern appearance (matching our minimal UI)
             ThemeManager.Current.ApplicationTheme = ApplicationTheme.Light;
+
+            // Choose UI mode based on settings or command line args
+            bool useHybridUI = false;
+
+            // Check command line arguments for --hybrid flag
+            foreach (string arg in e.Args)
+            {
+                if (arg.Equals("--hybrid", StringComparison.OrdinalIgnoreCase))
+                {
+                    useHybridUI = true;
+                    break;
+                }
+            }
+
+            // Create and show the appropriate window
+            Window mainWindow;
+            if (useHybridUI)
+            {
+                // Use modern web-based UI with WebView2
+                mainWindow = new HybridMainWindow();
+                System.Diagnostics.Debug.WriteLine("Starting Lumina with hybrid web UI");
+            }
+            else
+            {
+                // Use traditional WPF UI
+                mainWindow = new MainWindow();
+                System.Diagnostics.Debug.WriteLine("Starting Lumina with native WPF UI");
+            }
+
+            MainWindow = mainWindow;
+            mainWindow.Show();
 
             base.OnStartup(e);
         }
