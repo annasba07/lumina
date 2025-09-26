@@ -49,17 +49,55 @@ namespace SuperWhisperWPF
             // Set light theme for modern appearance (matching our minimal UI)
             ThemeManager.Current.ApplicationTheme = ApplicationTheme.Light;
 
+            // Start model preloading in background for instant readiness
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OptimizedWhisperEngine.Instance.PreloadAsync();
+                    System.Diagnostics.Debug.WriteLine("Model preloaded in background");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Model preload failed: {ex.Message}");
+                }
+            });
+
+            // Check for GPU and log capabilities
+            _ = Task.Run(() =>
+            {
+                var gpu = GpuAccelerator.Instance;
+                System.Diagnostics.Debug.WriteLine($"GPU: {gpu.GpuInfo}");
+            });
+
             // Choose UI mode based on settings or command line args
             bool useHybridUI = false;
+            bool runBenchmark = false;
 
-            // Check command line arguments for --hybrid flag
+            // Check command line arguments
             foreach (string arg in e.Args)
             {
                 if (arg.Equals("--hybrid", StringComparison.OrdinalIgnoreCase))
                 {
                     useHybridUI = true;
-                    break;
                 }
+                else if (arg.Equals("--benchmark", StringComparison.OrdinalIgnoreCase))
+                {
+                    runBenchmark = true;
+                }
+            }
+
+            // Run benchmark if requested
+            if (runBenchmark)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(2000); // Wait for initialization
+                    var monitor = PerformanceMonitor.Instance;
+                    var results = await monitor.RunBenchmarkAsync();
+                    System.Diagnostics.Debug.WriteLine(results.ToString());
+                    Logger.Info(results.ToString());
+                });
             }
 
             // Create and show the appropriate window
