@@ -202,11 +202,11 @@ namespace SuperWhisperWPF.Core
             try
             {
                 // Use fastest model for speculation
-                var result = await QuantizedEngine.Instance.TranscribeQuantized(
+                var result = await RealPerformanceEngine.Instance.TranscribeAsync(
                     request.Audio,
-                    QuantizedEngine.QualityPreference.Speed);
+                    RealPerformanceEngine.TranscriptionPriority.Speed);
 
-                request.Result = result.Text;
+                request.Result = result;
                 request.CompletionTime = DateTime.UtcNow;
             }
             catch (Exception ex)
@@ -274,11 +274,10 @@ namespace SuperWhisperWPF.Core
             // Use appropriate engine based on audio length
             if (audio.Length < 32000) // < 1 second
             {
-                // Use quantized engine for speed
-                var result = await QuantizedEngine.Instance.TranscribeQuantized(
+                // Use real performance engine for speed
+                return await RealPerformanceEngine.Instance.TranscribeAsync(
                     audio,
-                    QuantizedEngine.QualityPreference.Speed);
-                return result.Text;
+                    RealPerformanceEngine.TranscriptionPriority.Speed);
             }
             else
             {
