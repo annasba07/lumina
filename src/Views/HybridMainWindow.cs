@@ -280,24 +280,38 @@ namespace SuperWhisperWPF.Views
 
         private void InitializeBackend()
         {
-            // Initialize all our native components
-            whisperEngine = new WhisperEngine();
-            audioCapture = new AudioCapture();
-            modeManager = new RecordingModeManager();
-            streamingProcessor = new StreamingAudioProcessor();
+            try
+            {
+                // Initialize all our native components
+                whisperEngine = new WhisperEngine();
+                audioCapture = new AudioCapture();
+                modeManager = new RecordingModeManager();
+                streamingProcessor = new StreamingAudioProcessor();
 
-            // Set up event handlers
-            audioCapture.SpeechEnded += OnSpeechEnded;
-            audioCapture.AudioLevelChanged += OnAudioLevelChanged;
+                // Set up event handlers
+                audioCapture.SpeechEnded += OnSpeechEnded;
+                audioCapture.AudioLevelChanged += OnAudioLevelChanged;
 
-            streamingProcessor.PartialTranscription += OnPartialTranscription;
-            streamingProcessor.FinalTranscription += OnFinalTranscription;
+                streamingProcessor.PartialTranscription += OnPartialTranscription;
+                streamingProcessor.FinalTranscription += OnFinalTranscription;
 
-            // Initialize Whisper
-            _ = Task.Run(async () => await whisperEngine.InitializeAsync());
+                // Initialize Whisper
+                _ = Task.Run(async () => await whisperEngine.InitializeAsync());
 
-            // Set up global hotkey (Alt+Shift+R to avoid conflicts)
-            globalHotkey = HotkeyExtensions.CreateAltShiftR(this, ToggleRecording);
+                // Set up global hotkey (Alt+Shift+R to avoid conflicts)
+                globalHotkey = HotkeyExtensions.CreateAltShiftR(this, ToggleRecording);
+
+                Logger.Info("Backend initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to initialize backend: {ex.Message}");
+                System.Windows.MessageBox.Show(
+                    $"Failed to initialize audio capture: {ex.Message}\n\nPlease check your microphone settings.",
+                    "Lumina - Initialization Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
         }
 
         private void InitializeSystemTray()
@@ -705,18 +719,6 @@ namespace SuperWhisperWPF.Views
         <div id='audioLevel' class='audio-level-bar'></div>
     </div>
 
-    <!-- Mode Selection -->
-    <div class='modes-panel'>
-        <button class='mode-button active' onclick='setMode(""quick"")'>
-            ⚡ Quick
-        </button>
-        <button class='mode-button' onclick='setMode(""meeting"")'>
-            👥 Meeting
-        </button>
-        <button class='mode-button' onclick='setMode(""dictation"")'>
-            ✍️ Dictation
-        </button>
-    </div>
 
     <!-- Transcription Area -->
     <div class='transcription-container'>
@@ -741,16 +743,16 @@ namespace SuperWhisperWPF.Views
             <div class='info-label'>Duration</div>
         </div>
         <div class='info-card'>
-            <div id='latency' class='info-value'>0ms</div>
-            <div class='info-label'>Latency</div>
+            <div id='latency' class='info-value'>-</div>
+            <div class='info-label'>Processing</div>
         </div>
     </div>
 
     <script>
         let isRecording = false;
-        let currentMode = 'quick';
         let recordingStartTime = null;
         let recordingTimer = null;
+        let processingStartTime = null;
 
         function handleRecord() {
             console.log('handleRecord called, current state:', isRecording);
@@ -776,6 +778,7 @@ namespace SuperWhisperWPF.Views
                 btn.classList.remove('recording');
                 status.textContent = 'Processing...';
                 stopTimer();
+                processingStartTime = Date.now();
                 setTimeout(() => {
                     status.textContent = 'Ready to record';
                 }, 2000);
@@ -799,14 +802,7 @@ namespace SuperWhisperWPF.Views
             }
         }
 
-        function setMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.mode-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            window.lumina?.setMode(mode);
-        }
+        // Removed setMode - not functional
 
         function exportText(format) {
             const text = document.getElementById('transcriptionText').textContent;
@@ -842,10 +838,14 @@ namespace SuperWhisperWPF.Views
             const words = allText.trim() ? allText.trim().split(/\s+/).length : 0;
             document.getElementById('wordCount').textContent = words;
 
-            // Update latency display
-            const latencyEl = document.getElementById('latency');
-            if (latencyEl) {
-                latencyEl.textContent = '< 100ms';
+            // Calculate actual processing time
+            if (processingStartTime) {
+                const processingTime = Date.now() - processingStartTime;
+                const latencyEl = document.getElementById('latency');
+                if (latencyEl) {
+                    latencyEl.textContent = processingTime + 'ms';
+                }
+                processingStartTime = null;
             }
         };
 

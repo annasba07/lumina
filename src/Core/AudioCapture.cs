@@ -72,11 +72,22 @@ namespace SuperWhisperWPF
             lock (lockObject)
             {
                 if (isRecording) return;
-                
+
                 audioBuffer.Clear();
                 warningShown = false; // Reset warning flag
                 isRecording = true;
-                waveIn.StartRecording();
+
+                try
+                {
+                    waveIn.StartRecording();
+                    Logger.Info($"AudioCapture: Started recording (Device: {waveIn.DeviceNumber}, Format: {waveIn.WaveFormat})");
+                }
+                catch (Exception ex)
+                {
+                    isRecording = false;
+                    Logger.Error($"Failed to start recording: {ex.Message}");
+                    throw;
+                }
             }
         }
 
@@ -93,9 +104,14 @@ namespace SuperWhisperWPF
                 isRecording = false;
                 waveIn.StopRecording();
 
+                // Give a small delay to ensure all audio data is captured
+                Thread.Sleep(100);
+
                 if (audioBuffer.Count > 0)
                 {
                     var audioData = audioBuffer.ToArray();
+                    Logger.Info($"AudioCapture: Captured {audioData.Length} bytes ({audioData.Length / (float)Constants.Audio.BYTES_PER_SECOND:F1}s) of audio");
+
                     // Encrypt audio data before storing
                     encryptedAudioData = DataProtection.ProtectAudioData(audioData);
                     // Clear unencrypted buffer immediately
@@ -104,6 +120,10 @@ namespace SuperWhisperWPF
                     SpeechEnded?.Invoke(this, audioData);
                     // Securely wipe the unencrypted data
                     DataProtection.SecureWipe(audioData);
+                }
+                else
+                {
+                    Logger.Warning("AudioCapture: No audio data captured");
                 }
             }
         }
@@ -123,7 +143,17 @@ namespace SuperWhisperWPF
                 }
 
                 // Add audio data to buffer
-                audioBuffer.AddRange(e.Buffer.Take(e.BytesRecorded));
+                if (e.BytesRecorded > 0)
+                {
+                    audioBuffer.AddRange(e.Buffer.Take(e.BytesRecorded));
+
+                    // Log every second for debugging
+                    var currentSeconds = audioBuffer.Count / Constants.Audio.BYTES_PER_SECOND;
+                    if (currentSeconds > 0 && currentSeconds % 1 == 0)
+                    {
+                        Logger.Debug($"Recording: {currentSeconds}s captured ({audioBuffer.Count} bytes)");
+                    }
+                }
 
                 // Check if we should warn about approaching limit
                 var remainingBytes = maxBufferSize - audioBuffer.Count;
