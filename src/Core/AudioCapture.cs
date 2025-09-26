@@ -54,13 +54,34 @@ namespace SuperWhisperWPF
 
         private void InitializeAudioCapture()
         {
-            waveIn = new WaveInEvent
+            try
             {
-                WaveFormat = new WaveFormat(Constants.Audio.SAMPLE_RATE, Constants.Audio.CHANNELS),
-                BufferMilliseconds = Constants.Audio.BUFFER_MILLISECONDS
-            };
-            
-            waveIn.DataAvailable += OnDataAvailable;
+                waveIn = new WaveInEvent
+                {
+                    DeviceNumber = 0, // Use default device
+                    WaveFormat = new WaveFormat(Constants.Audio.SAMPLE_RATE, Constants.Audio.CHANNELS),
+                    BufferMilliseconds = Constants.Audio.BUFFER_MILLISECONDS,
+                    NumberOfBuffers = 3
+                };
+
+                waveIn.DataAvailable += OnDataAvailable;
+                waveIn.RecordingStopped += OnRecordingStopped;
+
+                Logger.Info($"AudioCapture initialized: Device={waveIn.DeviceNumber}, Format={waveIn.WaveFormat}, BufferMs={Constants.Audio.BUFFER_MILLISECONDS}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to initialize audio capture: {ex.Message}");
+                throw new InvalidOperationException("Failed to initialize audio capture. Please check that a microphone is available.", ex);
+            }
+        }
+
+        private void OnRecordingStopped(object sender, StoppedEventArgs e)
+        {
+            if (e.Exception != null)
+            {
+                Logger.Error($"Recording stopped with error: {e.Exception.Message}");
+            }
         }
 
         /// <summary>
@@ -102,15 +123,15 @@ namespace SuperWhisperWPF
                 if (!isRecording) return;
 
                 isRecording = false;
-                waveIn.StopRecording();
 
-                // Give a small delay to ensure all audio data is captured
-                Thread.Sleep(100);
-
+                // Process any buffered data before stopping
                 if (audioBuffer.Count > 0)
                 {
                     var audioData = audioBuffer.ToArray();
                     Logger.Info($"AudioCapture: Captured {audioData.Length} bytes ({audioData.Length / (float)Constants.Audio.BYTES_PER_SECOND:F1}s) of audio");
+
+                    // Stop recording after we've saved the data
+                    waveIn.StopRecording();
 
                     // Encrypt audio data before storing
                     encryptedAudioData = DataProtection.ProtectAudioData(audioData);
@@ -123,6 +144,7 @@ namespace SuperWhisperWPF
                 }
                 else
                 {
+                    waveIn.StopRecording();
                     Logger.Warning("AudioCapture: No audio data captured");
                 }
             }
@@ -130,7 +152,13 @@ namespace SuperWhisperWPF
 
         private void OnDataAvailable(object sender, WaveInEventArgs e)
         {
-            if (!isRecording) return;
+            Logger.Debug($"OnDataAvailable called: BytesRecorded={e.BytesRecorded}, isRecording={isRecording}");
+
+            if (!isRecording)
+            {
+                Logger.Debug("OnDataAvailable: Not recording, ignoring data");
+                return;
+            }
 
             lock (lockObject)
             {
@@ -146,12 +174,13 @@ namespace SuperWhisperWPF
                 if (e.BytesRecorded > 0)
                 {
                     audioBuffer.AddRange(e.Buffer.Take(e.BytesRecorded));
+                    Logger.Debug($"Added {e.BytesRecorded} bytes to buffer, total: {audioBuffer.Count} bytes");
 
-                    // Log every second for debugging
-                    var currentSeconds = audioBuffer.Count / Constants.Audio.BYTES_PER_SECOND;
-                    if (currentSeconds > 0 && currentSeconds % 1 == 0)
+                    // Log every 500ms for debugging
+                    var currentMs = (audioBuffer.Count * 1000) / Constants.Audio.BYTES_PER_SECOND;
+                    if (currentMs % 500 == 0)
                     {
-                        Logger.Debug($"Recording: {currentSeconds}s captured ({audioBuffer.Count} bytes)");
+                        Logger.Info($"Recording progress: {currentMs}ms captured ({audioBuffer.Count} bytes)");
                     }
                 }
 
