@@ -3,6 +3,7 @@ using System.Windows;
 using Velopack;
 using System;
 using System.Threading.Tasks;
+using SuperWhisperWPF.Core;
 
 namespace SuperWhisperWPF
 {
@@ -22,8 +23,18 @@ namespace SuperWhisperWPF
                 System.Diagnostics.Debug.WriteLine($"Velopack initialization failed: {ex.Message}");
             }
 
-            // Check for updates asynchronously
-            Task.Run(async () => await CheckForUpdatesAsync());
+            // Check for updates asynchronously with proper error handling
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await CheckForUpdatesAsync();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Background update check failed: {ex.Message}");
+                }
+            });
 
             // Set light theme for modern appearance (matching our minimal UI)
             ThemeManager.Current.ApplicationTheme = ApplicationTheme.Light;
@@ -36,7 +47,7 @@ namespace SuperWhisperWPF
             try
             {
                 // GitHub releases URL for Lumina
-                var mgr = new UpdateManager("https://github.com/annasba07/lumina/releases/latest/download/");
+                var mgr = new UpdateManager(Constants.App.UPDATE_URL);
 
                 // Check for new version
                 var newVersion = await mgr.CheckForUpdatesAsync();
@@ -47,7 +58,7 @@ namespace SuperWhisperWPF
                 await mgr.DownloadUpdatesAsync(newVersion);
 
                 // Install new version and restart app
-                mgr.ApplyUpdatesAndRestart(newVersion);
+                await Task.Run(() => mgr.ApplyUpdatesAndRestart(newVersion));
             }
             catch (Exception ex)
             {

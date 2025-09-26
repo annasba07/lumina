@@ -1,16 +1,22 @@
 using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using SuperWhisperWPF.Security;
+using SuperWhisperWPF.Core;
 
 namespace SuperWhisperWPF
 {
     public static class Logger
     {
-        private static readonly object lockObject = new object();
+        private static readonly ConcurrentQueue<string> logQueue = new ConcurrentQueue<string>();
+        private static readonly SemaphoreSlim logSemaphore = new SemaphoreSlim(1, 1);
+        private static readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        private static readonly Task logWriterTask;
         private static readonly string logFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SuperWhisper", "logs", $"superwhisper_wpf_{DateTime.Now:yyyy-MM-dd}.log");
+            Constants.App.LOG_FOLDER_NAME, "logs", $"{Constants.Files.LOG_FILE_PREFIX}{DateTime.Now:yyyy-MM-dd}{Constants.Files.LOG_FILE_EXTENSION}");
         
         static Logger()
         {
@@ -23,7 +29,10 @@ namespace SuperWhisperWPF
                 }
                 
                 // Write startup header
-                WriteToFile($"\n=== SuperWhisper WPF Started at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n");
+                logQueue.Enqueue($"\n=== {Constants.App.NAME} Started at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n");
+
+                // Start background log writer task
+                logWriterTask = Task.Run(ProcessLogQueueAsync);
             }
             catch (Exception ex)
             {
@@ -61,26 +70,81 @@ namespace SuperWhisperWPF
             var threadId = Thread.CurrentThread.ManagedThreadId;
             var logEntry = $"[{timestamp}] [{level}] [T{threadId}] {sanitizedMessage}";
 
-            // Write to console
+            // Write to console immediately
             Console.WriteLine(logEntry);
 
-            // Write to file
-            WriteToFile(logEntry);
+            // Queue for async file writing
+            logQueue.Enqueue(logEntry);
         }
         
-        private static void WriteToFile(string message)
+        private static async Task ProcessLogQueueAsync()
         {
-            lock (lockObject)
+            while (!cancellationTokenSource.Token.IsCancellationRequested)
             {
                 try
                 {
-                    File.AppendAllText(logFilePath, message + Environment.NewLine);
+                    if (logQueue.TryDequeue(out string message))
+                    {
+                        await WriteToFileAsync(message);
+                    }
+                    else
+                    {
+                        // Wait a bit if queue is empty
+                        await Task.Delay(100, cancellationTokenSource.Token);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
                 catch
                 {
-                    // Silently fail to avoid recursive logging issues
+                    // Continue processing even if individual writes fail
                 }
             }
+
+            // Flush remaining messages on shutdown
+            while (logQueue.TryDequeue(out string message))
+            {
+                try
+                {
+                    await WriteToFileAsync(message);
+                }
+                catch { }
+            }
+        }
+
+        private static async Task WriteToFileAsync(string message)
+        {
+            await logSemaphore.WaitAsync();
+            try
+            {
+                await File.AppendAllTextAsync(logFilePath, message + Environment.NewLine);
+            }
+            catch
+            {
+                // Silently fail to avoid recursive logging issues
+            }
+            finally
+            {
+                logSemaphore.Release();
+            }
+        }
+
+        public static void Shutdown()
+        {
+            Info("Logger shutting down...");
+            cancellationTokenSource.Cancel();
+
+            // Wait for log writer to finish (max 2 seconds)
+            try
+            {
+                logWriterTask?.Wait(2000);
+            }
+            catch { }
+
+            logSemaphore?.Dispose();
+            cancellationTokenSource?.Dispose();
         }
         
         public static void LogSystemInfo()
