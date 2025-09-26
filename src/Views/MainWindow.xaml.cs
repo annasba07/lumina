@@ -121,8 +121,8 @@ namespace SuperWhisperWPF
                 audioCapture.AudioLevelChanged += OnAudioLevelChanged;
                 audioCapture.ApproachingLimit += OnApproachingLimit;
                 
-                // Initialize global hotkey (Ctrl+Space) using proven Windows Forms approach
-                globalHotkey = HotkeyExtensions.CreateCtrlSpace(this, () => OnHotkeyPressed(null, null));
+                // Initialize global hotkey (Alt+Shift+R) to avoid conflicts
+                globalHotkey = HotkeyExtensions.CreateAltShiftR(this, () => OnHotkeyPressed(null, null));
                 
                 // Initialize recording timer
                 recordingTimer = new DispatcherTimer();
@@ -483,7 +483,7 @@ namespace SuperWhisperWPF
             // Create system tray icon
             trayIcon = new NotifyIcon();
             trayIcon.Icon = CreateTrayIcon();
-            trayIcon.Text = "Lumina - Press Ctrl+Space to record";
+            trayIcon.Text = "Lumina - Press Alt+Shift+R to record";
             trayIcon.Visible = true;
             
             // Double-click to show/hide window
