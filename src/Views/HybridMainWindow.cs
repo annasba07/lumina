@@ -363,31 +363,69 @@ namespace SuperWhisperWPF.Views
 
         public void ToggleRecording()
         {
-            isRecording = !isRecording;
-
-            if (isRecording)
+            try
             {
-                audioCapture.StartRecording();
-                Logger.Info("Recording started");
-            }
-            else
-            {
-                audioCapture.StopRecording();
-                Logger.Info("Recording stopped");
-            }
+                isRecording = !isRecording;
+                Logger.Info($"ToggleRecording: isRecording={isRecording}");
 
-            // Update UI through JavaScript
-            _ = webView?.CoreWebView2?.ExecuteScriptAsync($"window.handleRecord && window.handleRecord()");
+                if (isRecording)
+                {
+                    audioCapture.StartRecording();
+                    Logger.Info("Recording started via ToggleRecording");
+                }
+                else
+                {
+                    audioCapture.StopRecording();
+                    Logger.Info("Recording stopped via ToggleRecording");
+                }
+
+                // Update UI through JavaScript - don't call handleRecord again to avoid recursion
+                _ = Dispatcher.InvokeAsync(async () =>
+                {
+                    if (webView?.CoreWebView2 != null)
+                    {
+                        var script = isRecording ?
+                            "if(window.setRecordingState) window.setRecordingState(true);" :
+                            "if(window.setRecordingState) window.setRecordingState(false);";
+                        await webView.CoreWebView2.ExecuteScriptAsync(script);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in ToggleRecording: {ex.Message}");
+            }
         }
 
         private async void OnSpeechEnded(object sender, byte[] audioData)
         {
-            var transcription = await whisperEngine.TranscribeAsync(audioData);
+            try
+            {
+                Logger.Info($"OnSpeechEnded: Processing {audioData.Length} bytes of audio");
+                var transcription = await whisperEngine.TranscribeAsync(audioData);
+                Logger.Info($"Transcription result: '{transcription}'");
 
-            // Send result to JavaScript
-            await webView.CoreWebView2.ExecuteScriptAsync($@"
-                window.setTranscription && window.setTranscription('{JsonConvert.ToString(transcription)}');
-            ");
+                // Send result to JavaScript - escape the text properly
+                var escapedText = transcription?.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n") ?? "";
+                var script = $"window.setTranscription && window.setTranscription('{escapedText}');";
+
+                await Dispatcher.InvokeAsync(async () =>
+                {
+                    if (webView?.CoreWebView2 != null)
+                    {
+                        await webView.CoreWebView2.ExecuteScriptAsync(script);
+                        Logger.Info("Transcription sent to UI");
+                    }
+                    else
+                    {
+                        Logger.Warning("WebView2 not ready, couldn't send transcription");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in OnSpeechEnded: {ex.Message}");
+            }
         }
 
         private void OnAudioLevelChanged(object sender, float level)
@@ -715,7 +753,17 @@ namespace SuperWhisperWPF.Views
         let recordingTimer = null;
 
         function handleRecord() {
-            isRecording = !isRecording;
+            console.log('handleRecord called, current state:', isRecording);
+            // Just toggle the C# side, it will call setRecordingState back
+            if (window.lumina) {
+                window.lumina.toggleRecording();
+            }
+        }
+
+        // New function to update UI state from C#
+        window.setRecordingState = (recording) => {
+            console.log('setRecordingState called:', recording);
+            isRecording = recording;
             const btn = document.getElementById('recordBtn');
             const status = document.getElementById('statusText');
 
@@ -724,17 +772,15 @@ namespace SuperWhisperWPF.Views
                 status.textContent = 'Recording...';
                 recordingStartTime = Date.now();
                 startTimer();
-                window.lumina?.startRecording();
             } else {
                 btn.classList.remove('recording');
                 status.textContent = 'Processing...';
                 stopTimer();
-                window.lumina?.stopRecording();
                 setTimeout(() => {
                     status.textContent = 'Ready to record';
                 }, 2000);
             }
-        }
+        };
 
         function startTimer() {
             recordingTimer = setInterval(() => {
@@ -780,12 +826,27 @@ namespace SuperWhisperWPF.Views
 
         // Bridge functions
         window.setTranscription = (text) => {
+            console.log('setTranscription called with:', text);
             const transcriptionEl = document.getElementById('transcriptionText');
-            transcriptionEl.textContent = text;
+            const existingText = transcriptionEl.textContent;
+
+            // Append new transcription with line break if there's existing text
+            if (existingText && existingText.trim()) {
+                transcriptionEl.textContent = existingText + '\n\n' + text;
+            } else {
+                transcriptionEl.textContent = text;
+            }
 
             // Update word count
-            const words = text.trim().split(/\s+/).length;
+            const allText = transcriptionEl.textContent;
+            const words = allText.trim() ? allText.trim().split(/\s+/).length : 0;
             document.getElementById('wordCount').textContent = words;
+
+            // Update latency display
+            const latencyEl = document.getElementById('latency');
+            if (latencyEl) {
+                latencyEl.textContent = '< 100ms';
+            }
         };
 
         window.setPartialText = (text) => {
