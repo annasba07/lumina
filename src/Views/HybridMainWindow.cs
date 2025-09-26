@@ -157,8 +157,8 @@ namespace SuperWhisperWPF.Views
             // Initialize Whisper
             _ = Task.Run(async () => await whisperEngine.InitializeAsync());
 
-            // Set up global hotkey
-            globalHotkey = HotkeyExtensions.CreateCtrlSpace(this, ToggleRecording);
+            // Set up global hotkey (Alt+Shift+R to avoid conflicts)
+            globalHotkey = HotkeyExtensions.CreateAltShiftR(this, ToggleRecording);
         }
 
         public void ToggleRecording()

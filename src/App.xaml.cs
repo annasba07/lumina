@@ -75,18 +75,13 @@ namespace SuperWhisperWPF
                 System.Diagnostics.Debug.WriteLine($"GPU: {gpu.GpuInfo}");
             });
 
-            // Choose UI mode based on settings or command line args
-            bool useHybridUI = false;
+            // Always use hybrid architecture with WebView2 UI
             bool runBenchmark = false;
 
             // Check command line arguments
             foreach (string arg in e.Args)
             {
-                if (arg.Equals("--hybrid", StringComparison.OrdinalIgnoreCase))
-                {
-                    useHybridUI = true;
-                }
-                else if (arg.Equals("--benchmark", StringComparison.OrdinalIgnoreCase))
+                if (arg.Equals("--benchmark", StringComparison.OrdinalIgnoreCase))
                 {
                     runBenchmark = true;
                 }
@@ -105,20 +100,9 @@ namespace SuperWhisperWPF
                 });
             }
 
-            // Create and show the appropriate window
-            Window mainWindow;
-            if (useHybridUI)
-            {
-                // Use modern web-based UI with WebView2
-                mainWindow = new HybridMainWindow();
-                System.Diagnostics.Debug.WriteLine("Starting Lumina with hybrid web UI");
-            }
-            else
-            {
-                // Use traditional WPF UI
-                mainWindow = new MainWindow();
-                System.Diagnostics.Debug.WriteLine("Starting Lumina with native WPF UI");
-            }
+            // Create and show the hybrid window with WebView2
+            Window mainWindow = new HybridMainWindow();
+            System.Diagnostics.Debug.WriteLine("Starting Lumina with hybrid web UI");
 
             MainWindow = mainWindow;
             mainWindow.Show();

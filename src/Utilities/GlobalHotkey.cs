@@ -18,6 +18,7 @@ namespace SuperWhisperWPF
 
         // Virtual key codes
         public const uint VK_SPACE = 0x20;
+        public const uint VK_R = 0x52;  // R key for recording
         public const uint VK_F1 = 0x70;
         public const uint VK_F2 = 0x71;
         public const uint VK_F3 = 0x72;
@@ -205,6 +206,13 @@ namespace SuperWhisperWPF
         public static GlobalHotkey CreateWinSpace(object parentWindow, Action callback)
         {
             var hotkey = new GlobalHotkey(parentWindow, GlobalHotkey.MOD_WIN, GlobalHotkey.VK_SPACE);
+            hotkey.HotkeyPressed += (s, e) => callback();
+            return hotkey;
+        }
+
+        public static GlobalHotkey CreateAltShiftR(object parentWindow, Action callback)
+        {
+            var hotkey = new GlobalHotkey(parentWindow, GlobalHotkey.MOD_ALT | GlobalHotkey.MOD_SHIFT, GlobalHotkey.VK_R);
             hotkey.HotkeyPressed += (s, e) => callback();
             return hotkey;
         }
