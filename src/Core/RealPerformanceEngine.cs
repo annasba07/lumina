@@ -87,7 +87,6 @@ namespace SuperWhisperWPF.Core
                         var factory = WhisperFactory.FromPath(tinyPath);
                         tinyModel = factory.CreateBuilder()
                             .WithLanguage("en")
-                            .WithBeamSize(1) // Faster decoding
                             .WithThreads(Math.Min(4, Environment.ProcessorCount))
                             .Build();
                     });
@@ -103,7 +102,6 @@ namespace SuperWhisperWPF.Core
                         var factory = WhisperFactory.FromPath(basePath);
                         baseModel = factory.CreateBuilder()
                             .WithLanguage("en")
-                            .WithBeamSize(2)
                             .WithThreads(Math.Min(4, Environment.ProcessorCount))
                             .Build();
                     });
@@ -119,7 +117,6 @@ namespace SuperWhisperWPF.Core
                         var factory = WhisperFactory.FromPath(smallPath);
                         smallModel = factory.CreateBuilder()
                             .WithLanguage("en")
-                            .WithBeamSize(5)
                             .WithThreads(Environment.ProcessorCount)
                             .Build();
                     });
@@ -146,7 +143,7 @@ namespace SuperWhisperWPF.Core
                 // Check if cached result is recent and similar enough
                 if (IsCacheValid(cached, audioData))
                 {
-                    Interlocked.Increment(ref CacheHits);
+                    CacheHits++;
                     Logger.Debug($"Cache hit! Saved {stopwatch.ElapsedMilliseconds}ms");
                     return cached.Text;
                 }
@@ -185,8 +182,8 @@ namespace SuperWhisperWPF.Core
                 });
 
                 stopwatch.Stop();
-                Interlocked.Add(ref TotalProcessingMs, stopwatch.ElapsedMilliseconds);
-                Interlocked.Increment(ref TotalTranscriptions);
+                TotalProcessingMs += stopwatch.ElapsedMilliseconds;
+                TotalTranscriptions++;
 
                 taskCompletionSource.SetResult(result);
                 return result;
@@ -494,7 +491,7 @@ namespace SuperWhisperWPF.Core
 
         public bool TryGet(TKey key, out TValue value)
         {
-            rwLock.EnterUpgradableReadLock();
+            rwLock.EnterUpgradeableReadLock();
             try
             {
                 if (cacheMap.TryGetValue(key, out var node))
@@ -520,7 +517,7 @@ namespace SuperWhisperWPF.Core
             }
             finally
             {
-                rwLock.ExitUpgradableReadLock();
+                rwLock.ExitUpgradeableReadLock();
             }
         }
 

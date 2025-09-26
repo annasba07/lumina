@@ -199,7 +199,8 @@ namespace SuperWhisperWPF.Core
         {
             try
             {
-                return (memCounter?.NextValue() ?? currentProcess?.WorkingSet64 ?? 0) / (1024 * 1024);
+                var memoryBytes = memCounter?.NextValue() ?? currentProcess?.WorkingSet64 ?? 0;
+                return (long)(memoryBytes / (1024 * 1024));
             }
             catch
             {
@@ -310,9 +311,9 @@ namespace SuperWhisperWPF.Core
             public void Complete(long timeMs, long memoryBytes)
             {
                 Interlocked.Decrement(ref activeCount);
-                Interlocked.Increment(ref TotalCalls);
-                Interlocked.Add(ref TotalTimeMs, timeMs);
-                Interlocked.Add(ref TotalMemoryBytes, memoryBytes);
+                TotalCalls++;
+                TotalTimeMs += timeMs;
+                TotalMemoryBytes += memoryBytes;
 
                 // Update min/max (not thread-safe but good enough)
                 if (timeMs < MinTimeMs) MinTimeMs = timeMs;

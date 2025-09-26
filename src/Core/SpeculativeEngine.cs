@@ -64,9 +64,20 @@ namespace SuperWhisperWPF.Core
                 audio => PredictEndpoint(audio),
                 options);
 
-            // Link pipeline
-            endpointPredictor.LinkTo(processingPipeline,
-                endpoint => endpoint.Confidence > 0.7);
+            // Link pipeline - process endpoints with high confidence
+            endpointPredictor.LinkTo(
+                new ActionBlock<PredictedEndpoint>(async endpoint =>
+                {
+                    if (endpoint.Confidence > 0.7)
+                    {
+                        await processingPipeline.SendAsync(new SpeculativeRequest
+                        {
+                            Audio = audioBuffer.Peek(endpoint.TimestampMs),
+                            LengthMs = endpoint.TimestampMs
+                        });
+                    }
+                }),
+                new DataflowLinkOptions { PropagateCompletion = true });
 
             Logger.Info("Speculative engine initialized with parallel processing");
         }
