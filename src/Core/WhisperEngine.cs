@@ -6,6 +6,10 @@ using Whisper.net;
 
 namespace SuperWhisperWPF
 {
+    /// <summary>
+    /// Manages the Whisper.NET speech recognition engine for transcribing audio to text.
+    /// Handles model initialization, audio processing, and transcription operations.
+    /// </summary>
     public class WhisperEngine : IDisposable
     {
         private WhisperFactory whisperFactory;
@@ -13,6 +17,11 @@ namespace SuperWhisperWPF
         private bool isInitialized = false;
         private readonly object lockObject = new object();
 
+        /// <summary>
+        /// Initializes the Whisper engine with the specified model asynchronously.
+        /// Loads the ggml-base.en.bin model and prepares the processor for transcription.
+        /// </summary>
+        /// <returns>True if initialization succeeded, false otherwise.</returns>
         public async Task<bool> InitializeAsync()
         {
             Logger.Info("Starting WhisperEngine initialization with Whisper.net...");
@@ -63,6 +72,11 @@ namespace SuperWhisperWPF
             }
         }
 
+        /// <summary>
+        /// Transcribes audio data to text using the Whisper model.
+        /// </summary>
+        /// <param name="audioData">Raw PCM audio data (16kHz, 16-bit, mono).</param>
+        /// <returns>Transcribed text string, or empty string if transcription fails.</returns>
         public async Task<string> TranscribeAsync(byte[] audioData)
         {
             Logger.Debug($"TranscribeAsync called with {audioData.Length} bytes of audio data");
@@ -120,6 +134,11 @@ namespace SuperWhisperWPF
             }
         }
 
+        /// <summary>
+        /// Converts raw PCM audio bytes to a properly formatted WAV stream.
+        /// </summary>
+        /// <param name="audioData">Raw PCM audio bytes.</param>
+        /// <returns>WAV-formatted memory stream ready for Whisper processing.</returns>
         private Stream ConvertToWaveStream(byte[] audioData)
         {
             // Whisper.net expects a WAV stream with proper headers
@@ -157,6 +176,11 @@ namespace SuperWhisperWPF
             return stream;
         }
 
+        /// <summary>
+        /// Calculates the maximum audio level in the provided audio data.
+        /// </summary>
+        /// <param name="audioData">Raw audio bytes to analyze.</param>
+        /// <returns>Normalized maximum audio level (0.0 to 1.0).</returns>
         private float CalculateMaxAudioLevel(byte[] audioData)
         {
             float max = 0f;
@@ -172,6 +196,10 @@ namespace SuperWhisperWPF
         }
 
 
+        /// <summary>
+        /// Releases all resources used by the WhisperEngine.
+        /// Disposes of the Whisper processor and factory instances.
+        /// </summary>
         public void Dispose()
         {
             lock (lockObject)

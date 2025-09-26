@@ -10,6 +10,10 @@ using SuperWhisperWPF.Core;
 
 namespace SuperWhisperWPF
 {
+    /// <summary>
+    /// Handles audio capture from the system microphone with optimized settings for Whisper transcription.
+    /// Provides real-time audio level monitoring and automatic speech detection.
+    /// </summary>
     public class AudioCapture : IDisposable
     {
         private WaveInEvent waveIn;
@@ -22,10 +26,25 @@ namespace SuperWhisperWPF
         private readonly int maxBufferSize;
         private bool warningShown = false;
         
+        /// <summary>
+        /// Fired when recording stops and audio data is ready for transcription.
+        /// </summary>
         public event EventHandler<byte[]> SpeechEnded;
-        public event EventHandler<float> AudioLevelChanged;
-        public event EventHandler<int> ApproachingLimit; // Fired when nearing max duration
 
+        /// <summary>
+        /// Fired continuously during recording with normalized audio levels (0.0 to 1.0).
+        /// </summary>
+        public event EventHandler<float> AudioLevelChanged;
+
+        /// <summary>
+        /// Fired when recording approaches the maximum duration limit.
+        /// Provides remaining seconds as event argument.
+        /// </summary>
+        public event EventHandler<int> ApproachingLimit;
+
+        /// <summary>
+        /// Initializes a new instance of the AudioCapture class with optimized settings for Whisper.
+        /// </summary>
         public AudioCapture()
         {
             maxBufferSize = Constants.Audio.BYTES_PER_SECOND * Constants.Audio.MAX_RECORDING_SECONDS;
@@ -44,6 +63,10 @@ namespace SuperWhisperWPF
             waveIn.DataAvailable += OnDataAvailable;
         }
 
+        /// <summary>
+        /// Starts audio recording from the default microphone.
+        /// Clears any previous audio buffer and begins capturing at 16kHz mono.
+        /// </summary>
         public void StartRecording()
         {
             lock (lockObject)
@@ -57,6 +80,10 @@ namespace SuperWhisperWPF
             }
         }
 
+        /// <summary>
+        /// Stops audio recording and triggers the SpeechEnded event with captured audio.
+        /// Encrypts audio data for security before storage.
+        /// </summary>
         public void StopRecording()
         {
             lock (lockObject)
@@ -136,6 +163,10 @@ namespace SuperWhisperWPF
         }
 
 
+        /// <summary>
+        /// Releases all resources used by the AudioCapture instance.
+        /// Stops any active recording and disposes of the WaveIn device.
+        /// </summary>
         public void Dispose()
         {
             try

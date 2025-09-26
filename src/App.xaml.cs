@@ -7,8 +7,17 @@ using SuperWhisperWPF.Core;
 
 namespace SuperWhisperWPF
 {
+    /// <summary>
+    /// Main application class for Lumina speech-to-text application.
+    /// Handles application lifecycle, auto-updates, and theme initialization.
+    /// </summary>
     public partial class App : Application
     {
+        /// <summary>
+        /// Called when the application starts.
+        /// Initializes Velopack auto-updater, checks for updates, and sets the application theme.
+        /// </summary>
+        /// <param name="e">Startup event arguments.</param>
         protected override void OnStartup(StartupEventArgs e)
         {
             // Initialize Velopack for auto-updates
@@ -42,6 +51,10 @@ namespace SuperWhisperWPF
             base.OnStartup(e);
         }
 
+        /// <summary>
+        /// Checks for application updates from GitHub releases asynchronously.
+        /// Downloads and applies updates automatically if available.
+        /// </summary>
         private static async Task CheckForUpdatesAsync()
         {
             try
