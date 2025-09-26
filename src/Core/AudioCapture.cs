@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SuperWhisperWPF.Security;
 
 namespace SuperWhisperWPF
 {
@@ -12,6 +13,7 @@ namespace SuperWhisperWPF
     {
         private WaveInEvent waveIn;
         private readonly List<byte> audioBuffer;
+        private byte[] encryptedAudioData; // Store encrypted version
         private bool isRecording;
         private readonly object lockObject = new object();
 
@@ -65,14 +67,21 @@ namespace SuperWhisperWPF
             lock (lockObject)
             {
                 if (!isRecording) return;
-                
+
                 isRecording = false;
                 waveIn.StopRecording();
-                
+
                 if (audioBuffer.Count > 0)
                 {
                     var audioData = audioBuffer.ToArray();
+                    // Encrypt audio data before storing
+                    encryptedAudioData = DataProtection.ProtectAudioData(audioData);
+                    // Clear unencrypted buffer immediately
+                    audioBuffer.Clear();
+                    // Pass unencrypted data to event (will be encrypted again if stored)
                     SpeechEnded?.Invoke(this, audioData);
+                    // Securely wipe the unencrypted data
+                    DataProtection.SecureWipe(audioData);
                 }
             }
         }

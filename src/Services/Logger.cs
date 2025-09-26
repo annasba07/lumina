@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading;
+using SuperWhisperWPF.Security;
 
 namespace SuperWhisperWPF
 {
@@ -53,13 +54,16 @@ namespace SuperWhisperWPF
         
         private static void Log(string level, string message)
         {
+            // Sanitize message to remove sensitive information
+            var sanitizedMessage = DataProtection.SanitizeForLogging(message);
+
             var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
             var threadId = Thread.CurrentThread.ManagedThreadId;
-            var logEntry = $"[{timestamp}] [{level}] [T{threadId}] {message}";
-            
+            var logEntry = $"[{timestamp}] [{level}] [T{threadId}] {sanitizedMessage}";
+
             // Write to console
             Console.WriteLine(logEntry);
-            
+
             // Write to file
             WriteToFile(logEntry);
         }
