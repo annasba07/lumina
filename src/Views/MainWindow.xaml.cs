@@ -12,6 +12,7 @@ using System.Windows.Threading;
 using System.Windows.Forms;
 using Velopack;
 using SuperWhisperWPF.Core;
+using SuperWhisperWPF.Services;
 
 namespace SuperWhisperWPF
 {
@@ -30,6 +31,8 @@ namespace SuperWhisperWPF
         private bool isInitialized = false;
         private DispatcherTimer typingTimer;
         private bool isExiting = false;
+        private DateTime lastTranscriptionTime;
+        private TimeSpan lastRecordingDuration;
 
         public MainWindow()
         {
@@ -188,6 +191,7 @@ namespace SuperWhisperWPF
             
             // Update toast notification
             recordingTimer.Stop();
+            lastRecordingDuration = DateTime.Now - recordingStartTime;
             ShowToast("Processing", "⏳");
         }
 
@@ -213,6 +217,7 @@ namespace SuperWhisperWPF
                     // Update UI on the main thread
                     Dispatcher.Invoke(() =>
                     {
+                        lastTranscriptionTime = DateTime.Now;
                         AppendTranscription(transcription);
                         UpdateStatus("Ready", System.Windows.Media.Colors.Green);
                         HideToast();
@@ -323,6 +328,7 @@ namespace SuperWhisperWPF
             // Enable buttons
             CopyButton.IsEnabled = true;
             ClearButton.IsEnabled = true;
+            ExportButton.IsEnabled = true;
 
             // Update word count
             UpdateWordCount();
@@ -342,9 +348,18 @@ namespace SuperWhisperWPF
             {
                 EmptyStatePanel.Visibility = Visibility.Collapsed;
                 WordCountBorder.Visibility = Visibility.Visible;
-                var words = text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                var words = GetWordCount();
                 WordCountText.Text = words == 1 ? "1 word" : $"{words} words";
             }
+        }
+
+        private int GetWordCount()
+        {
+            if (string.IsNullOrWhiteSpace(ResultsTextBox.Text))
+                return 0;
+
+            var words = ResultsTextBox.Text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            return words.Length;
         }
 
         private async void CopyButton_Click(object sender, RoutedEventArgs e)
@@ -390,9 +405,38 @@ namespace SuperWhisperWPF
             ResultsTextBox.Clear();
             CopyButton.IsEnabled = false;
             ClearButton.IsEnabled = false;
+            ExportButton.IsEnabled = false;
             UpdateStatus("Cleared", System.Windows.Media.Colors.Gray);
             UpdateWordCount();
             Logger.Info("Results cleared");
+        }
+
+        private async void ExportButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var transcriptionData = new ExportService.TranscriptionData
+                {
+                    Text = ResultsTextBox.Text,
+                    Timestamp = lastTranscriptionTime,
+                    WordCount = GetWordCount(),
+                    Duration = lastRecordingDuration,
+                    ApplicationVersion = Constants.App.VERSION
+                };
+
+                var success = await ExportService.ExportWithDialogAsync(transcriptionData);
+
+                if (success)
+                {
+                    UpdateStatus("Exported", System.Windows.Media.Colors.Green);
+                    Logger.Info("Transcription exported successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Export failed: {ex.Message}", ex);
+                UpdateStatus("Export failed", System.Windows.Media.Colors.Red);
+            }
         }
 
         protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)

@@ -371,6 +371,51 @@
                             </StackPanel>
                         </Button>
 
+                        <Button x:Name="ExportButton"
+                               Background="White"
+                               BorderBrush="#E5E7EB"
+                               BorderThickness="1"
+                               Click="ExportButton_Click"
+                               IsEnabled="False"
+                               Height="36"
+                               Margin="0,0,8,0"
+                               Padding="16,0"
+                               Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="ButtonBorder"
+                                           Background="{TemplateBinding Background}"
+                                           BorderBrush="{TemplateBinding BorderBrush}"
+                                           BorderThickness="{TemplateBinding BorderThickness}"
+                                           CornerRadius="18">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ButtonBorder" Property="Background" Value="#F9FAFB"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Opacity" Value="0.5"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xEDE1;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="14"
+                                          Margin="0,0,8,0"
+                                          VerticalAlignment="Center"
+                                          Foreground="#6B7280"/>
+                                <TextBlock Text="Export"
+                                          FontSize="14"
+                                          FontWeight="Medium"
+                                          VerticalAlignment="Center"
+                                          Foreground="#374151"/>
+                            </StackPanel>
+                        </Button>
+
                         <Button x:Name="CopyButton"
                                Background="#3B82F6"
                                Click="CopyButton_Click"
