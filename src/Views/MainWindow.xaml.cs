@@ -11,18 +11,13 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Windows.Forms;
 using Velopack;
+using SuperWhisperWPF.Core;
 
 namespace SuperWhisperWPF
 {
     public partial class MainWindow : Window
     {
-        // Constants
-        private const int TYPING_TIMER_DELAY_MS = 500;
-        private const int BALLOON_TIP_TIMEOUT_MS = 2000;
-        private const int OVERLAY_SUCCESS_DURATION_MS = 2000;
-        private const int OVERLAY_ERROR_DURATION_MS = 3000;
-        private const int COPY_FEEDBACK_DURATION_MS = 1500;
-        private const int TRAY_ICON_SIZE = 16;
+        // Constants are now centralized in Constants.cs
 
         private WhisperEngine whisperEngine;
         private AudioCapture audioCapture;
@@ -103,7 +98,7 @@ namespace SuperWhisperWPF
                 
                 // Initialize recording timer
                 recordingTimer = new DispatcherTimer();
-                recordingTimer.Interval = TimeSpan.FromMilliseconds(100);
+                recordingTimer.Interval = TimeSpan.FromMilliseconds(Constants.UI.RECORDING_TIMER_INTERVAL_MS);
                 recordingTimer.Tick += UpdateRecordingTime;
 
                 // Initialize toast pulse animation
@@ -114,7 +109,7 @@ namespace SuperWhisperWPF
                 
                 // Initialize typing timer for word count
                 typingTimer = new DispatcherTimer();
-                typingTimer.Interval = TimeSpan.FromMilliseconds(TYPING_TIMER_DELAY_MS);
+                typingTimer.Interval = TimeSpan.FromMilliseconds(Constants.UI.TYPING_TIMER_DELAY_MS);
                 typingTimer.Tick += (s, e) => UpdateWordCount();
                 ResultsTextBox.TextChanged += (s, e) => {
                     typingTimer.Stop();

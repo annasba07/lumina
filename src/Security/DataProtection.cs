@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using SuperWhisperWPF.Core;
 
 namespace SuperWhisperWPF.Security
 {
@@ -145,32 +146,32 @@ namespace SuperWhisperWPF.Security
             if (string.IsNullOrEmpty(text))
                 return text;
 
-            // Remove potential sensitive patterns
+            // Remove potential sensitive patterns using centralized regex patterns
             // Email addresses
             text = System.Text.RegularExpressions.Regex.Replace(
                 text,
-                @"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+                Constants.Patterns.EMAIL_PATTERN,
                 "[EMAIL]"
             );
 
             // Phone numbers
             text = System.Text.RegularExpressions.Regex.Replace(
                 text,
-                @"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b",
+                Constants.Patterns.PHONE_PATTERN,
                 "[PHONE]"
             );
 
             // Credit card patterns
             text = System.Text.RegularExpressions.Regex.Replace(
                 text,
-                @"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b",
+                Constants.Patterns.CREDIT_CARD_PATTERN,
                 "[CARD]"
             );
 
             // SSN patterns
             text = System.Text.RegularExpressions.Regex.Replace(
                 text,
-                @"\b\d{3}-\d{2}-\d{4}\b",
+                Constants.Patterns.SSN_PATTERN,
                 "[SSN]"
             );
 

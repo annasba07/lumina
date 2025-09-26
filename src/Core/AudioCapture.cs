@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SuperWhisperWPF.Security;
+using SuperWhisperWPF.Core;
 
 namespace SuperWhisperWPF
 {
@@ -17,13 +18,7 @@ namespace SuperWhisperWPF
         private bool isRecording;
         private readonly object lockObject = new object();
 
-        // Audio settings optimized for Whisper
-        private const int SAMPLE_RATE = 16000;
-        private const int CHANNELS = 1;
-        private const int BUFFER_MILLISECONDS = 50; // Low latency buffer
-        private const int MAX_RECORDING_SECONDS = 7200; // 2 hours max recording (230MB)
-        private const int BYTES_PER_SECOND = SAMPLE_RATE * CHANNELS * 2; // 16-bit audio = 32KB/sec
-        private const int WARNING_SECONDS = 300; // Warn when 5 minutes remaining
+        // Audio settings optimized for Whisper - using centralized constants
         private readonly int maxBufferSize;
         private bool warningShown = false;
         
@@ -33,7 +28,7 @@ namespace SuperWhisperWPF
 
         public AudioCapture()
         {
-            maxBufferSize = BYTES_PER_SECOND * MAX_RECORDING_SECONDS;
+            maxBufferSize = Constants.Audio.BYTES_PER_SECOND * Constants.Audio.MAX_RECORDING_SECONDS;
             audioBuffer = new List<byte>(maxBufferSize);
             InitializeAudioCapture();
         }
@@ -42,8 +37,8 @@ namespace SuperWhisperWPF
         {
             waveIn = new WaveInEvent
             {
-                WaveFormat = new WaveFormat(SAMPLE_RATE, CHANNELS),
-                BufferMilliseconds = BUFFER_MILLISECONDS
+                WaveFormat = new WaveFormat(Constants.Audio.SAMPLE_RATE, Constants.Audio.CHANNELS),
+                BufferMilliseconds = Constants.Audio.BUFFER_MILLISECONDS
             };
             
             waveIn.DataAvailable += OnDataAvailable;
@@ -95,7 +90,7 @@ namespace SuperWhisperWPF
                 // Check if we've reached max recording duration
                 if (audioBuffer.Count + e.BytesRecorded > maxBufferSize)
                 {
-                    Logger.Warning($"Maximum recording duration of {MAX_RECORDING_SECONDS / 3600.0:F1} hours reached");
+                    Logger.Warning($"Maximum recording duration of {Constants.Audio.MAX_RECORDING_SECONDS / 3600.0:F1} hours reached");
                     StopRecording();
                     return;
                 }
@@ -105,9 +100,9 @@ namespace SuperWhisperWPF
 
                 // Check if we should warn about approaching limit
                 var remainingBytes = maxBufferSize - audioBuffer.Count;
-                var remainingSeconds = remainingBytes / BYTES_PER_SECOND;
+                var remainingSeconds = remainingBytes / Constants.Audio.BYTES_PER_SECOND;
 
-                if (!warningShown && remainingSeconds <= WARNING_SECONDS)
+                if (!warningShown && remainingSeconds <= Constants.Audio.WARNING_SECONDS)
                 {
                     warningShown = true;
                     var remainingMinutes = remainingSeconds / 60.0;

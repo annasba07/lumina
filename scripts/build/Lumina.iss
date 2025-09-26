@@ -24,9 +24,9 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 
 ; Output settings
-OutputDir=installer
+OutputDir=..\..\Releases
 OutputBaseFilename=LuminaSetup-{#MyAppVersion}
-SetupIconFile=lumina-icon.ico
+SetupIconFile=..\..\assets\icons\lumina-icon.ico
 
 ; Compression settings (good balance of size and speed)
 Compression=lzma2
@@ -43,8 +43,6 @@ PrivilegesRequiredOverridesAllowed=dialog
 
 ; UI settings
 WizardStyle=modern
-WizardImageFile=lumina-icon.ico
-WizardSmallImageFile=lumina-icon.ico
 DisableWelcomePage=no
 DisableDirPage=no
 DisableReadyPage=no
@@ -70,12 +68,10 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 Name: "startup"; Description: "Start {#MyAppName} when Windows starts"; GroupDescription: "Startup Options:"; Flags: unchecked
 
 [Files]
-; Main application files from publish folder
-Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Whisper model file (this is large, ~141MB)
-Source: "publish\ggml-base.en.bin"; DestDir: "{app}"; Flags: ignoreversion
+; Main application files from Release build
+Source: "..\..\bin\Release\net8.0-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Icon file
-Source: "publish\lumina-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\assets\icons\lumina-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
@@ -100,7 +96,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 [UninstallDelete]
 ; Clean up any files created by the application
 Type: filesandordirs; Name: "{localappdata}\Lumina"
-Type: filesandordirs; Name: "{appdata}\Lumina"
+Type: filesandordirs; Name: "{userappdata}\SuperWhisper"
 
 [Code]
 // Check if .NET 8 Desktop Runtime is installed

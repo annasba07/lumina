@@ -207,3 +207,8 @@ publish/
 # Whisper model files (users will download automatically)
 assets/models/*.bin
 *.bin
+
+# Private strategy documents
+LUMINA_VISION.md
+*_PRIVATE.md
+*_CONFIDENTIAL.md
