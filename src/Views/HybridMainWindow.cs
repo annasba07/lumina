@@ -444,26 +444,46 @@ namespace SuperWhisperWPF.Views
 
         private void OnAudioLevelChanged(object sender, float level)
         {
-            // Update audio visualizer in UI
-            _ = webView?.CoreWebView2?.ExecuteScriptAsync($@"
-                window.setAudioLevel && window.setAudioLevel({level});
-            ");
+            // Update audio visualizer in UI - must be on UI thread
+            _ = Dispatcher.InvokeAsync(async () =>
+            {
+                if (webView?.CoreWebView2 != null)
+                {
+                    await webView.CoreWebView2.ExecuteScriptAsync($@"
+                        window.setAudioLevel && window.setAudioLevel({level});
+                    ");
+                }
+            });
         }
 
         private void OnPartialTranscription(object sender, string text)
         {
-            // Show partial text while speaking
-            _ = webView?.CoreWebView2?.ExecuteScriptAsync($@"
-                window.setPartialText && window.setPartialText('{JsonConvert.ToString(text)}');
-            ");
+            // Show partial text while speaking - must be on UI thread
+            _ = Dispatcher.InvokeAsync(async () =>
+            {
+                if (webView?.CoreWebView2 != null)
+                {
+                    var escapedText = text?.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n") ?? "";
+                    await webView.CoreWebView2.ExecuteScriptAsync($@"
+                        window.setPartialText && window.setPartialText('{escapedText}');
+                    ");
+                }
+            });
         }
 
         private void OnFinalTranscription(object sender, string text)
         {
-            // Show final transcription
-            _ = webView?.CoreWebView2?.ExecuteScriptAsync($@"
-                window.setTranscription && window.setTranscription('{JsonConvert.ToString(text)}');
-            ");
+            // Show final transcription - must be on UI thread
+            _ = Dispatcher.InvokeAsync(async () =>
+            {
+                if (webView?.CoreWebView2 != null)
+                {
+                    var escapedText = text?.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n") ?? "";
+                    await webView.CoreWebView2.ExecuteScriptAsync($@"
+                        window.setTranscription && window.setTranscription('{escapedText}');
+                    ");
+                }
+            });
         }
 
         private void ExportTranscription(string format)

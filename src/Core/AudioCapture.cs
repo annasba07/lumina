@@ -200,8 +200,16 @@ namespace SuperWhisperWPF
             }
 
             // Calculate audio level for visual feedback
-            var audioLevel = CalculateAudioLevel(e.Buffer, e.BytesRecorded);
-            AudioLevelChanged?.Invoke(this, audioLevel);
+            try
+            {
+                var audioLevel = CalculateAudioLevel(e.Buffer, e.BytesRecorded);
+                AudioLevelChanged?.Invoke(this, audioLevel);
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Error updating audio level: {ex.Message}");
+                // Don't let UI errors stop recording
+            }
         }
 
         private float CalculateAudioLevel(byte[] buffer, int bytesRecorded)
