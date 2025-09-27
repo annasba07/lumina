@@ -50,15 +50,12 @@ namespace SuperWhisperWPF
                     whisperFactory = WhisperFactory.FromPath(modelPath);
                     Logger.Info("✅ WhisperFactory created successfully");
                     
-                    // Create processor with speed optimizations
+                    // Create processor with valid optimizations
                     processor = whisperFactory.CreateBuilder()
                         .WithLanguage(settings.Language)
                         .WithPrompt("") // No initial prompt
                         .WithTemperature(0.0f) // Use greedy decoding for speed
-                        .WithSpeedUp2x() // Enable 2x speedup
-                        .WithThreads(Environment.ProcessorCount) // Use all CPU cores
-                        .WithNoContext() // Disable context for speed
-                        .WithSingleSegment() // Process as single segment
+                        .WithThreads(Math.Min(4, Environment.ProcessorCount)) // Limit thread contention
                         .Build();
                         
                     Logger.Info("✅ WhisperProcessor created successfully");
@@ -99,9 +96,9 @@ namespace SuperWhisperWPF
             {
                 Logger.Debug("Starting Whisper.net transcription process...");
                 
-                // Convert byte array to MemoryStream for Whisper.net
-                Logger.Debug($"Converting {audioData.Length} bytes to audio stream...");
-                using var audioStream = ConvertToWaveStream(audioData);
+                // Convert byte array to float array for Whisper.net
+                Logger.Debug($"Converting {audioData.Length} bytes to float array...");
+                var floatArray = ConvertToFloatArray(audioData);
                 
                 // Log audio analysis
                 var audioMax = CalculateMaxAudioLevel(audioData);
@@ -111,11 +108,11 @@ namespace SuperWhisperWPF
                 // Perform transcription with Whisper.net
                 Logger.Info("Starting Whisper.net transcription...");
                 var startTime = DateTime.UtcNow;
-                
+
                 var text = new StringBuilder();
-                await foreach (var segment in processor.ProcessAsync(audioStream))
+                await foreach (var segment in processor.ProcessAsync(floatArray))
                 {
-                    Logger.Info($"Segment: '{segment.Text?.Trim()}'");
+                    Logger.Debug($"Segment: '{segment.Text?.Trim()}'"); // Moved to Debug to reduce overhead
                     if (!string.IsNullOrWhiteSpace(segment.Text))
                     {
                         text.Append(segment.Text.Trim());
@@ -139,45 +136,25 @@ namespace SuperWhisperWPF
         }
 
         /// <summary>
-        /// Converts raw PCM audio bytes to a properly formatted WAV stream.
+        /// Converts raw PCM audio bytes to float array for Whisper processing.
         /// </summary>
-        /// <param name="audioData">Raw PCM audio bytes.</param>
-        /// <returns>WAV-formatted memory stream ready for Whisper processing.</returns>
-        private Stream ConvertToWaveStream(byte[] audioData)
+        /// <param name="audioData">Raw PCM audio bytes (16-bit, 16kHz, mono).</param>
+        /// <returns>Float array normalized to [-1.0, 1.0] range.</returns>
+        private float[] ConvertToFloatArray(byte[] audioData)
         {
-            // Whisper.net expects a WAV stream with proper headers
-            // Our audioData is 16-bit PCM, 16kHz, mono
-            const int sampleRate = 16000;
-            const int channels = 1;
-            const int bitsPerSample = 16;
-            const int byteRate = sampleRate * channels * bitsPerSample / 8;
-            const int blockAlign = channels * bitsPerSample / 8;
+            // Convert 16-bit PCM to float array
+            var sampleCount = audioData.Length / 2; // 16-bit = 2 bytes per sample
+            var floatArray = new float[sampleCount];
 
-            var stream = new MemoryStream();
-            var writer = new BinaryWriter(stream);
+            for (int i = 0; i < sampleCount; i++)
+            {
+                // Read 16-bit sample (little-endian)
+                var sample = BitConverter.ToInt16(audioData, i * 2);
+                // Normalize to [-1.0, 1.0] range
+                floatArray[i] = sample / 32768.0f;
+            }
 
-            // WAV header
-            writer.Write("RIFF".ToCharArray());
-            writer.Write(36 + audioData.Length); // ChunkSize
-            writer.Write("WAVE".ToCharArray());
-
-            // Format subchunk
-            writer.Write("fmt ".ToCharArray());
-            writer.Write(16); // Subchunk1Size (PCM = 16)
-            writer.Write((ushort)1); // AudioFormat (PCM = 1)
-            writer.Write((ushort)channels);
-            writer.Write(sampleRate);
-            writer.Write(byteRate);
-            writer.Write((ushort)blockAlign);
-            writer.Write((ushort)bitsPerSample);
-
-            // Data subchunk
-            writer.Write("data".ToCharArray());
-            writer.Write(audioData.Length);
-            writer.Write(audioData);
-
-            stream.Position = 0;
-            return stream;
+            return floatArray;
         }
 
         /// <summary>

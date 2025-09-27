@@ -8,6 +8,9 @@ namespace SuperWhisperWPF
     {
         // Model settings
         public string ModelFileName { get; set; } = "ggml-base.en.bin";
+        public string TinyModelFileName { get; set; } = "ggml-tiny.en.bin";
+        public bool UseGpuAcceleration { get; set; } = true;
+        public bool UseTinyModelForSpeed { get; set; } = false;
         public string[] ModelSearchPaths { get; set; }
 
         // Audio settings
@@ -30,6 +33,15 @@ namespace SuperWhisperWPF
         // Whisper settings
         public string Language { get; set; } = "en";
         public float Temperature { get; set; } = 0.0f;
+
+        // Performance optimization settings
+        public bool EnableVoiceActivityDetection { get; set; } = true;
+        public float VadSilenceThreshold { get; set; } = 0.001f; // Detect silence below this level
+        public bool EnableTranscriptionCache { get; set; } = true;
+        public int CacheMaxEntries { get; set; } = 2000;
+        public bool EnableChunkedProcessing { get; set; } = true;
+        public int ChunkSizeMs { get; set; } = 1000; // Process in 1-second chunks
+        public string PreferredGpuBackend { get; set; } = "Auto"; // Auto, CUDA, Vulkan, DirectML, CPU
 
         private static AppSettings _instance;
         private static readonly object _lock = new object();
@@ -123,7 +135,28 @@ namespace SuperWhisperWPF
 
         public string FindModelPath()
         {
-            foreach (var path in ModelSearchPaths)
+            return FindModelPath(ModelFileName);
+        }
+
+        public string FindTinyModelPath()
+        {
+            return FindModelPath(TinyModelFileName);
+        }
+
+        private string FindModelPath(string modelFileName)
+        {
+            var searchPaths = new[]
+            {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, modelFileName),
+                Path.Combine(Environment.CurrentDirectory, modelFileName),
+                Path.Combine(Environment.CurrentDirectory, "assets\\models", modelFileName),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets\\models", modelFileName),
+                Path.Combine(Environment.CurrentDirectory, "bin\\Release\\net8.0-windows", modelFileName),
+                Path.Combine(Environment.CurrentDirectory, "bin\\Debug\\net8.0-windows", modelFileName),
+                Path.Combine(Environment.CurrentDirectory, "..\\src\\bin\\Debug\\net8.0-windows", modelFileName)
+            };
+
+            foreach (var path in searchPaths)
             {
                 if (File.Exists(path))
                 {
@@ -133,7 +166,7 @@ namespace SuperWhisperWPF
                 }
             }
 
-            Logger.Error($"Model file '{ModelFileName}' not found in any expected location");
+            Logger.Warning($"Model file '{modelFileName}' not found in any expected location");
             return null;
         }
     }

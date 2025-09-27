@@ -49,24 +49,8 @@ namespace SuperWhisperWPF
             // Set light theme for modern appearance (matching our minimal UI)
             ThemeManager.Current.ApplicationTheme = ApplicationTheme.Light;
 
-            // Start real performance engine in background for instant readiness
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    // Initialize the real performance engine
-                    var engine = RealPerformanceEngine.Instance;
-                    System.Diagnostics.Debug.WriteLine("Real performance engine initialized");
-
-                    // Also preload the optimized engine
-                    await OptimizedWhisperEngine.Instance.PreloadAsync();
-                    System.Diagnostics.Debug.WriteLine("Models preloaded in background");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Engine initialization failed: {ex.Message}");
-                }
-            });
+            // Note: Removed background engine initialization to prevent semaphore deadlock
+            // Engine will initialize on first transcription request
 
             // Check for GPU and log capabilities
             _ = Task.Run(() =>

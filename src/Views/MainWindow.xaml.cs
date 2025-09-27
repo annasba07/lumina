@@ -105,7 +105,7 @@ namespace SuperWhisperWPF
             {
                 Logger.Info("Initializing SuperWhisper WPF...");
                 
-                // Initialize Whisper engine
+                // Initialize high-performance Whisper engine with GPU acceleration
                 whisperEngine = new WhisperEngine();
                 var whisperInitialized = await whisperEngine.InitializeAsync();
                 

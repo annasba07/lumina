@@ -295,7 +295,7 @@ namespace SuperWhisperWPF.Views
                 streamingProcessor.PartialTranscription += OnPartialTranscription;
                 streamingProcessor.FinalTranscription += OnFinalTranscription;
 
-                // Initialize Whisper
+                // Initialize Whisper engine
                 _ = Task.Run(async () => await whisperEngine.InitializeAsync());
 
                 // Set up global hotkey (Alt+Shift+R to avoid conflicts)
