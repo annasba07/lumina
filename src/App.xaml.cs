@@ -39,11 +39,15 @@ namespace SuperWhisperWPF
                             case "--benchmark-onnx":
                                 await ModelBenchmark.RunOnnxBenchmarkAsync();
                                 break;
+                            case "--realistic-benchmark":
+                                await RealisticBenchmark.RunRealisticBenchmarkAsync();
+                                break;
                             case "--help":
                                 Logger.Info("Available commands:");
-                                Logger.Info("  --enable-tiny    : Enable tiny model for ~5x speed");
-                                Logger.Info("  --benchmark      : Run model performance comparison");
-                                Logger.Info("  --benchmark-onnx : Test ONNX Runtime with DirectML");
+                                Logger.Info("  --enable-tiny         : Enable tiny model for ~5x speed");
+                                Logger.Info("  --benchmark           : Run model performance comparison");
+                                Logger.Info("  --benchmark-onnx      : Test ONNX Runtime with DirectML");
+                                Logger.Info("  --realistic-benchmark : Test with real speech samples");
                                 break;
                         }
                     }

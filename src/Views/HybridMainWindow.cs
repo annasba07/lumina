@@ -22,7 +22,7 @@ namespace SuperWhisperWPF.Views
     public class HybridMainWindow : Window
     {
         private WebView2 webView;
-        private WhisperEngine whisperEngine;
+        private AdaptiveWhisperEngine whisperEngine;
         private AudioCapture audioCapture;
         private RecordingModeManager modeManager;
         private StreamingAudioProcessor streamingProcessor;
@@ -283,7 +283,7 @@ namespace SuperWhisperWPF.Views
             try
             {
                 // Initialize all our native components
-                whisperEngine = new WhisperEngine();
+                whisperEngine = new AdaptiveWhisperEngine();
                 audioCapture = new AudioCapture();
                 modeManager = new RecordingModeManager();
                 streamingProcessor = new StreamingAudioProcessor();

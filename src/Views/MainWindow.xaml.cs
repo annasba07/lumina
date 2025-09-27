@@ -20,7 +20,7 @@ namespace SuperWhisperWPF
     {
         // Constants are now centralized in Constants.cs
 
-        private WhisperEngine whisperEngine;
+        private AdaptiveWhisperEngine whisperEngine;
         private AudioCapture audioCapture;
         private GlobalHotkey globalHotkey;
         private DispatcherTimer recordingTimer;
@@ -106,7 +106,7 @@ namespace SuperWhisperWPF
                 Logger.Info("Initializing SuperWhisper WPF...");
                 
                 // Initialize high-performance Whisper engine with GPU acceleration
-                whisperEngine = new WhisperEngine();
+                whisperEngine = new AdaptiveWhisperEngine();
                 var whisperInitialized = await whisperEngine.InitializeAsync();
                 
                 if (!whisperInitialized)
