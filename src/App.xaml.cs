@@ -21,6 +21,35 @@ namespace SuperWhisperWPF
         /// <param name="e">Startup event arguments.</param>
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Handle command-line arguments
+            if (e.Args.Length > 0)
+            {
+                _ = Task.Run(async () =>
+                {
+                    foreach (var arg in e.Args)
+                    {
+                        switch (arg.ToLower())
+                        {
+                            case "--enable-tiny":
+                                await ModelBenchmark.EnableTinyModelAsync();
+                                break;
+                            case "--benchmark":
+                                await ModelBenchmark.RunBenchmarkAsync();
+                                break;
+                            case "--benchmark-onnx":
+                                await ModelBenchmark.RunOnnxBenchmarkAsync();
+                                break;
+                            case "--help":
+                                Logger.Info("Available commands:");
+                                Logger.Info("  --enable-tiny    : Enable tiny model for ~5x speed");
+                                Logger.Info("  --benchmark      : Run model performance comparison");
+                                Logger.Info("  --benchmark-onnx : Test ONNX Runtime with DirectML");
+                                break;
+                        }
+                    }
+                });
+            }
+
             // Initialize Velopack for auto-updates
             try
             {

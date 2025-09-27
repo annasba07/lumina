@@ -47,7 +47,7 @@ namespace SuperWhisperWPF.Core
         // Configuration
         private readonly int maxCacheSize = 2000;
         private readonly int audioChunkSize = 8000; // 0.5 second chunks at 16kHz
-        private readonly float silenceThreshold = 0.01f;
+        private readonly float silenceThreshold = 0.001f;
 
         // Events for real-time feedback
         public event EventHandler<string> PartialTranscription;
@@ -102,18 +102,46 @@ namespace SuperWhisperWPF.Core
                 progress?.Report("Detecting GPU capabilities...");
 
                 Logger.Info("HighPerformanceWhisperEngine: Calling DetectGpuCapabilitiesAsync...");
-                // Detect and configure GPU acceleration
-                currentGpuMode = await DetectGpuCapabilitiesAsync();
+                // Detect and configure GPU acceleration with timeout
+                var gpuTask = DetectGpuCapabilitiesAsync();
+                var gpuTimeout = Task.Delay(10000); // 10 second timeout
+                if (await Task.WhenAny(gpuTask, gpuTimeout) == gpuTimeout)
+                {
+                    Logger.Warning("GPU detection timed out after 10s, using CPU mode");
+                    currentGpuMode = GpuAccelerationMode.None;
+                }
+                else
+                {
+                    currentGpuMode = await gpuTask;
+                }
                 Logger.Info($"HighPerformanceWhisperEngine: GPU Mode detected: {currentGpuMode}");
 
                 progress?.Report("Loading Whisper models...");
                 Logger.Info("HighPerformanceWhisperEngine: Calling LoadModelsAsync...");
-                await LoadModelsAsync(progress);
+                // Load models with timeout
+                var loadTask = LoadModelsAsync(progress);
+                var loadTimeout = Task.Delay(30000); // 30 second timeout
+                if (await Task.WhenAny(loadTask, loadTimeout) == loadTimeout)
+                {
+                    Logger.Error("Model loading timed out after 30s");
+                    throw new TimeoutException("Model loading timed out");
+                }
+                await loadTask;
                 Logger.Info("HighPerformanceWhisperEngine: LoadModelsAsync completed");
 
                 progress?.Report("Warming up models...");
                 Logger.Info("HighPerformanceWhisperEngine: Calling WarmUpModelsAsync...");
-                await WarmUpModelsAsync();
+                // Warmup with timeout
+                var warmupTask = WarmUpModelsAsync();
+                var warmupTimeout = Task.Delay(15000); // 15 second timeout
+                if (await Task.WhenAny(warmupTask, warmupTimeout) == warmupTimeout)
+                {
+                    Logger.Warning("Model warmup timed out after 15s, proceeding anyway");
+                }
+                else
+                {
+                    await warmupTask;
+                }
                 Logger.Info("HighPerformanceWhisperEngine: WarmUpModelsAsync completed");
 
                 isInitialized = true;
@@ -164,12 +192,13 @@ namespace SuperWhisperWPF.Core
                 Logger.Info($"HighPerformanceWhisperEngine: Starting TranscribeFastAsync with {audioData.Length} bytes");
 
                 // Quick VAD check - skip processing if mostly silence
-                if (IsMostlySilence(audioData))
+                // TEMPORARILY DISABLED: Testing transcription performance without VAD
+                /*if (IsMostlySilence(audioData))
                 {
                     Logger.Info("HighPerformanceWhisperEngine: Audio detected as mostly silence, skipping transcription");
                     metrics.RecordTranscription(stopwatch.ElapsedMilliseconds, true);
                     return string.Empty;
-                }
+                }*/
 
                 // Check cache for identical audio
                 var audioHash = ComputeFastHash(audioData);

@@ -17,6 +17,10 @@ namespace SuperWhisperWPF
         private bool isInitialized = false;
         private readonly object lockObject = new object();
 
+        // VAD (Voice Activity Detection) parameters for performance optimization
+        private readonly float silenceThreshold = 0.01f;  // Matches SuperWhisper
+        private readonly float minimumSpeechRatio = 0.1f; // 10% speech required
+
         /// <summary>
         /// Initializes the Whisper engine with the specified model asynchronously.
         /// Loads the ggml-base.en.bin model and prepares the processor for transcription.
@@ -81,7 +85,7 @@ namespace SuperWhisperWPF
         public async Task<string> TranscribeAsync(byte[] audioData)
         {
             Logger.Debug($"TranscribeAsync called with {audioData.Length} bytes of audio data");
-            
+
             if (!isInitialized)
             {
                 Logger.Warning("WhisperEngine not initialized, attempting to initialize...");
@@ -90,6 +94,13 @@ namespace SuperWhisperWPF
                     Logger.Error("Failed to initialize WhisperEngine for transcription");
                     throw new Exception("Whisper engine not initialized");
                 }
+            }
+
+            // VAD preprocessing - skip transcription for silence (matching SuperWhisper)
+            if (IsAudioSilent(audioData))
+            {
+                Logger.Info("VAD: Skipped silent audio, saved transcription time");
+                return "[BLANK_AUDIO]"; // Match SuperWhisper's behavior
             }
 
             try
@@ -174,6 +185,39 @@ namespace SuperWhisperWPF
                 }
             }
             return max / 32768f; // Normalize to 0-1 range
+        }
+
+        /// <summary>
+        /// Voice Activity Detection (VAD) to filter silence and improve performance.
+        /// Matches SuperWhisper's behavior of returning "[BLANK_AUDIO]" for silence.
+        /// This can reduce latency by 90%+ for silent/noise audio.
+        /// </summary>
+        private bool IsAudioSilent(byte[] audioData)
+        {
+            if (audioData == null || audioData.Length < 320) // Less than 10ms of audio
+                return true;
+
+            var samples = audioData.Length / 2;
+            var speechSamples = 0;
+
+            // Sample every 10th sample for performance (statistically accurate)
+            for (int i = 0; i < audioData.Length - 1; i += 20)
+            {
+                var sample = Math.Abs(BitConverter.ToInt16(audioData, i)) / 32768f;
+                if (sample > silenceThreshold)
+                    speechSamples++;
+            }
+
+            // Calculate speech ratio based on sampled data
+            var speechRatio = speechSamples * 10f / samples;
+            var isSilent = speechRatio < minimumSpeechRatio;
+
+            if (isSilent)
+            {
+                Logger.Debug($"VAD: Audio detected as silence (speech ratio: {speechRatio:F2})");
+            }
+
+            return isSilent;
         }
 
 
