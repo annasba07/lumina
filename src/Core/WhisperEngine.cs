@@ -41,14 +41,18 @@ namespace SuperWhisperWPF
                 try
                 {
                     var settings = AppSettings.Instance;
-                    var modelPath = settings.FindModelPath();
+                    // Use tiny model if enabled for speed (~5x faster)
+                    var modelPath = settings.UseTinyModelForSpeed ?
+                        settings.FindTinyModelPath() :
+                        settings.FindModelPath();
 
                     if (modelPath == null)
                     {
                         throw new FileNotFoundException($"Model file '{settings.ModelFileName}' not found in any expected location");
                     }
 
-                    Logger.Info("Creating Whisper.net factory and processor...");
+                    var modelName = settings.UseTinyModelForSpeed ? "ggml-tiny.en.bin" : "ggml-base.en.bin";
+                    Logger.Info($"Creating Whisper.net factory with model: {modelName}");
                     
                     // Create WhisperFactory from model path
                     whisperFactory = WhisperFactory.FromPath(modelPath);
@@ -84,6 +88,7 @@ namespace SuperWhisperWPF
         /// <returns>Transcribed text string, or empty string if transcription fails.</returns>
         public async Task<string> TranscribeAsync(byte[] audioData)
         {
+            var overallStart = DateTime.UtcNow;
             Logger.Debug($"TranscribeAsync called with {audioData.Length} bytes of audio data");
 
             if (!isInitialized)
@@ -97,46 +102,73 @@ namespace SuperWhisperWPF
             }
 
             // VAD preprocessing - skip transcription for silence (matching SuperWhisper)
+            var vadStart = DateTime.UtcNow;
             if (IsAudioSilent(audioData))
             {
-                Logger.Info("VAD: Skipped silent audio, saved transcription time");
+                var vadTime = (DateTime.UtcNow - vadStart).TotalMilliseconds;
+                Logger.Info($"VAD: Skipped silent audio in {vadTime:F1}ms, saved transcription time");
                 return "[BLANK_AUDIO]"; // Match SuperWhisper's behavior
             }
+            var vadTime2 = (DateTime.UtcNow - vadStart).TotalMilliseconds;
+            Logger.Info($"⏱️ VAD Check: {vadTime2:F1}ms");
 
             try
             {
                 Logger.Debug("Starting Whisper.net transcription process...");
-                
+
                 // Convert byte array to float array for Whisper.net
+                var conversionStart = DateTime.UtcNow;
                 Logger.Debug($"Converting {audioData.Length} bytes to float array...");
                 var floatArray = ConvertToFloatArray(audioData);
-                
+                var conversionTime = (DateTime.UtcNow - conversionStart).TotalMilliseconds;
+                Logger.Info($"⏱️ Audio Conversion: {conversionTime:F1}ms");
+
                 // Log audio analysis
+                var analysisStart = DateTime.UtcNow;
                 var audioMax = CalculateMaxAudioLevel(audioData);
                 var duration = audioData.Length / 2.0 / 16000.0; // 16-bit samples at 16kHz
-                Logger.Info($"Audio Analysis: Duration={duration:F1}s, MaxLevel={audioMax:F4}");
+                var analysisTime = (DateTime.UtcNow - analysisStart).TotalMilliseconds;
+                Logger.Info($"Audio Analysis: Duration={duration:F1}s, MaxLevel={audioMax:F4} (took {analysisTime:F1}ms)");
 
                 // Perform transcription with Whisper.net
                 Logger.Info("Starting Whisper.net transcription...");
-                var startTime = DateTime.UtcNow;
+                var inferenceStart = DateTime.UtcNow;
 
                 var text = new StringBuilder();
+                var segmentCount = 0;
+                var firstSegmentTime = 0.0;
+
                 await foreach (var segment in processor.ProcessAsync(floatArray))
                 {
-                    Logger.Debug($"Segment: '{segment.Text?.Trim()}'"); // Moved to Debug to reduce overhead
+                    segmentCount++;
+                    if (segmentCount == 1)
+                    {
+                        firstSegmentTime = (DateTime.UtcNow - inferenceStart).TotalMilliseconds;
+                        Logger.Info($"⏱️ First Segment: {firstSegmentTime:F1}ms");
+                    }
+
+                    Logger.Debug($"Segment {segmentCount}: '{segment.Text?.Trim()}'");
                     if (!string.IsNullOrWhiteSpace(segment.Text))
                     {
                         text.Append(segment.Text.Trim());
                         text.Append(" ");
                     }
                 }
-                
-                var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                var inferenceTime = (DateTime.UtcNow - inferenceStart).TotalMilliseconds;
                 var finalText = text.ToString().Trim();
-                
-                Logger.Info($"Whisper.net transcription completed in {processingTime:F1}ms");
+
+                var totalTime = (DateTime.UtcNow - overallStart).TotalMilliseconds;
+
+                Logger.Info($"⏱️ PROFILING BREAKDOWN:");
+                Logger.Info($"  - VAD Check:        {vadTime2:F1}ms");
+                Logger.Info($"  - Audio Conversion: {conversionTime:F1}ms");
+                Logger.Info($"  - Audio Analysis:   {analysisTime:F1}ms");
+                Logger.Info($"  - Model Inference:  {inferenceTime:F1}ms");
+                Logger.Info($"  - Total Segments:   {segmentCount}");
+                Logger.Info($"  - TOTAL TIME:       {totalTime:F1}ms");
                 Logger.Info($"Result: '{finalText}' ({finalText.Length} characters)");
-                
+
                 return finalText;
             }
             catch (Exception ex)

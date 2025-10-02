@@ -72,6 +72,8 @@ namespace SuperWhisperWPF.Core
                 // Download using Whisper.NET's built-in downloader if available
                 try
                 {
+                    // Commented out due to API changes in Whisper.NET
+                    /*
                     var ggmlType = GetGgmlType(modelFileName);
                     if (ggmlType != null)
                     {
@@ -82,6 +84,7 @@ namespace SuperWhisperWPF.Core
                         Logger.Info($"✅ Successfully downloaded {modelFileName} to {targetPath}");
                         return true;
                     }
+                    */
                 }
                 catch (Exception ex)
                 {
