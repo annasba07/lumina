@@ -91,6 +91,31 @@
   - Automatic runtime selection is not working
   - Builder API doesn't expose GPU configuration
 
+### 2025-10-01 Session 10: A/B Testing Framework
+**Architecture**: Created parallel engine comparison framework
+- **New Files**:
+  - `src/Core/EngineComparison.cs` - A/B testing framework (195 lines)
+  - Added `GenerateTestAudio()` to `App.xaml.cs` for synthetic audio
+- **Command**: `dotnet run --configuration Release -- --compare-engines`
+
+- **Initial Test Results (1.0s synthetic audio):**
+  - ✅ Whisper.NET CPU (Base model): **269ms** initialization + inference
+  - ❌ Deepgram Cloud API: Failed (DEEPGRAM_API_KEY not set)
+  - ❌ ONNX Runtime (GPU): Failed (404 on model download)
+  - 🏆 Tiny Model CPU: **159ms** initialization + inference (fastest)
+
+- **Key Findings:**
+  - A/B framework successfully runs 4 engines in parallel ✅
+  - All engines returned empty results (synthetic audio not recognized as speech)
+  - Tiny model is ~40% faster than base model for initialization
+  - Need real speech audio samples for meaningful comparison
+
+- **Next Steps:**
+  - Test with real recorded speech audio
+  - Fix ONNX model download URLs
+  - Set up Deepgram API key for cloud comparison
+  - Measure real-world latency with actual voice input
+
 ---
 
 ## KEY FINDINGS
