@@ -53,7 +53,10 @@ namespace SuperWhisperWPF
 
                     var modelName = settings.UseTinyModelForSpeed ? "ggml-tiny.en.bin" : "ggml-base.en.bin";
                     Logger.Info($"Creating Whisper.net factory with model: {modelName}");
-                    
+
+                    // Note: Whisper.NET 1.8.1 auto-selects runtime (CUDA→Vulkan→CoreML→OpenVino→CPU)
+                    Logger.Info("Using automatic runtime selection (CUDA prioritized)");
+
                     // Create WhisperFactory from model path
                     whisperFactory = WhisperFactory.FromPath(modelPath);
                     Logger.Info("✅ WhisperFactory created successfully");

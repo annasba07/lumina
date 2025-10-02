@@ -211,4 +211,4 @@ assets/models/*.bin
 # Private strategy documents
 LUMINA_VISION.md
 *_PRIVATE.md
-*_CONFIDENTIAL.md
+*_CONFIDENTIAL.mdrun_with_deepgram.bat

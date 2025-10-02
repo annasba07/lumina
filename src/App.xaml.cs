@@ -30,21 +30,6 @@ namespace SuperWhisperWPF
                     {
                         switch (arg.ToLower())
                         {
-                            case "--enable-tiny":
-                                await ModelBenchmark.EnableTinyModelAsync();
-                                break;
-                            case "--benchmark":
-                                await ModelBenchmark.RunBenchmarkAsync();
-                                break;
-                            case "--benchmark-onnx":
-                                await ModelBenchmark.RunOnnxBenchmarkAsync();
-                                break;
-                            case "--realistic-benchmark":
-                                await RealisticBenchmark.RunRealisticBenchmarkAsync();
-                                break;
-                            case "--ultra-benchmark":
-                                await UltraBenchmark.RunUltraBenchmarkAsync();
-                                break;
                             case "--latency-benchmark":
                                 var latencyBenchmark = new LatencyBenchmark();
                                 await latencyBenchmark.RunFullBenchmarkAsync();

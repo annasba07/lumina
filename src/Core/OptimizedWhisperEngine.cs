@@ -97,6 +97,10 @@ namespace SuperWhisperWPF.Core
 
                 Logger.Info($"Using model: {Path.GetFileName(modelPath)} for transcription");
 
+                // Note: Whisper.NET 1.8.1 auto-selects runtime (CUDA→Vulkan→CoreML→OpenVino→CPU)
+                // Runtime configuration API may be in a different namespace or version
+                Logger.Info("Using automatic runtime selection (CUDA prioritized)");
+
                 // Create factory
                 whisperFactory = WhisperFactory.FromPath(modelPath);
                 Logger.Info("✅ WhisperFactory created");

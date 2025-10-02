@@ -57,22 +57,6 @@ namespace SuperWhisperWPF
                     var engine = new OptimizedWhisperEngine();
                     await engine.InitializeAsync();
                     return new OptimizedEngineAdapter(engine);
-                }),
-
-                ("FasterWhisper (Native)", async () => {
-                    if (!NativeWrapperBuilder.IsNativeWrapperAvailable())
-                    {
-                        await NativeWrapperBuilder.BuildNativeWrapperAsync();
-                    }
-                    var engine = new FasterWhisperEngine();
-                    await engine.InitializeAsync();
-                    return new FasterWhisperAdapter(engine);
-                }),
-
-                ("Ultra Pipeline (Full Optimization)", async () => {
-                    var pipeline = new UltraLowLatencyPipeline();
-                    await pipeline.InitializeAsync();
-                    return new PipelineAdapter(pipeline);
                 })
             };
 
@@ -381,31 +365,6 @@ Engine: {group.Key}
             public OptimizedEngineAdapter(OptimizedWhisperEngine e) => engine = e;
             public Task<string> TranscribeAsync(byte[] audioData) => engine.TranscribeAsync(audioData);
             public void Dispose() => engine.Dispose();
-        }
-
-        private class FasterWhisperAdapter : ITranscriptionEngine
-        {
-            private readonly FasterWhisperEngine engine;
-            public FasterWhisperAdapter(FasterWhisperEngine e) => engine = e;
-            public Task<string> TranscribeAsync(byte[] audioData) => engine.TranscribeAsync(audioData);
-            public void Dispose() => engine.Dispose();
-        }
-
-        private class PipelineAdapter : ITranscriptionEngine
-        {
-            private readonly UltraLowLatencyPipeline pipeline;
-            public PipelineAdapter(UltraLowLatencyPipeline p) => pipeline = p;
-
-            public async Task<string> TranscribeAsync(byte[] audioData)
-            {
-                await pipeline.SubmitAudioAsync(audioData);
-                await Task.Delay(250); // Wait for processing
-
-                var results = pipeline.GetAllResults();
-                return string.Join(" ", results.Select(r => r.Text));
-            }
-
-            public void Dispose() => pipeline.Dispose();
         }
 
         #endregion
