@@ -242,13 +242,15 @@ namespace SuperWhisperWPF.Core
             {
                 Logger.Debug($"OptimizedWhisperEngine: Processing {audioData.Length} bytes");
 
-                // Voice Activity Detection (research shows 90%+ performance gain)
-                if (IsMostlySilence(audioData))
+                // Voice Activity Detection (TEMPORARILY DISABLED for GPU testing)
+                // VAD is too aggressive with current thresholds - blocking real speech
+                /*if (IsMostlySilence(audioData))
                 {
                     Logger.Debug("Audio detected as silence, skipping transcription");
                     RecordLatency(stopwatch.ElapsedMilliseconds);
                     return string.Empty;
-                }
+                }*/
+                Logger.Debug("VAD disabled - processing all audio to test GPU");
 
                 // Convert to float array (research-optimal approach)
                 var floatArray = ConvertToFloatArrayOptimized(audioData);
