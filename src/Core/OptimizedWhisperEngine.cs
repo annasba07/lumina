@@ -32,8 +32,8 @@ namespace SuperWhisperWPF.Core
         private bool hasGpuAcceleration = false;
         private readonly SemaphoreSlim initSemaphore = new SemaphoreSlim(1, 1);
 
-        // Voice Activity Detection
-        private readonly float silenceThreshold = 0.01f;
+        // Voice Activity Detection (tuned to reduce false positives)
+        private readonly float silenceThreshold = 0.05f; // Increased from 0.01 to reduce false silence detection
         private readonly int minSpeechSamples = 160; // 10ms at 16kHz
 
         // Performance tracking
@@ -239,14 +239,12 @@ namespace SuperWhisperWPF.Core
                 Logger.Debug($"OptimizedWhisperEngine: Processing {audioData.Length} bytes");
 
                 // Voice Activity Detection (research shows 90%+ performance gain)
-                // TEMPORARILY DISABLED: VAD is too aggressive and blocking all speech
-                /*if (IsMostlySilence(audioData))
+                if (IsMostlySilence(audioData))
                 {
                     Logger.Debug("Audio detected as silence, skipping transcription");
                     RecordLatency(stopwatch.ElapsedMilliseconds);
                     return string.Empty;
-                }*/
-                Logger.Debug("VAD disabled - processing all audio for testing");
+                }
 
                 // Convert to float array (research-optimal approach)
                 var floatArray = ConvertToFloatArrayOptimized(audioData);
@@ -301,7 +299,7 @@ namespace SuperWhisperWPF.Core
             }
 
             var speechRatio = speechSamples / (float)sampleCount;
-            return speechRatio < 0.1f; // Less than 10% speech = silence
+            return speechRatio < 0.15f; // Less than 15% speech = silence (tuned to reduce false positives)
         }
 
         #endregion

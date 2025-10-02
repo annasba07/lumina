@@ -69,29 +69,7 @@ namespace SuperWhisperWPF.Core
 
                 var targetPath = Path.Combine(modelDir, modelFileName);
 
-                // Download using Whisper.NET's built-in downloader if available
-                try
-                {
-                    // Commented out due to API changes in Whisper.NET
-                    /*
-                    var ggmlType = GetGgmlType(modelFileName);
-                    if (ggmlType != null)
-                    {
-                        Logger.Info($"Using Whisper.NET downloader for {ggmlType}");
-                        var modelStream = await WhisperGgmlDownloader.GetGgmlModelAsync(ggmlType.Value);
-                        using var fileWriter = File.OpenWrite(targetPath);
-                        await modelStream.CopyToAsync(fileWriter);
-                        Logger.Info($"✅ Successfully downloaded {modelFileName} to {targetPath}");
-                        return true;
-                    }
-                    */
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warning($"Whisper.NET downloader failed: {ex.Message}, trying direct download");
-                }
-
-                // Fallback to direct HTTP download
+                // Direct HTTP download
                 using var response = await httpClient.GetAsync(modelUrl, HttpCompletionOption.ResponseHeadersRead);
                 response.EnsureSuccessStatusCode();
 
@@ -126,20 +104,6 @@ namespace SuperWhisperWPF.Core
                 Logger.Error($"Failed to download model {modelFileName}: {ex.Message}", ex);
                 return false;
             }
-        }
-
-        private static GgmlType? GetGgmlType(string modelFileName)
-        {
-            if (modelFileName.Contains("tiny.en")) return GgmlType.TinyEn;
-            if (modelFileName.Contains("tiny")) return GgmlType.Tiny;
-            if (modelFileName.Contains("base.en")) return GgmlType.BaseEn;
-            if (modelFileName.Contains("base")) return GgmlType.Base;
-            if (modelFileName.Contains("small.en")) return GgmlType.SmallEn;
-            if (modelFileName.Contains("small")) return GgmlType.Small;
-            if (modelFileName.Contains("medium.en")) return GgmlType.MediumEn;
-            if (modelFileName.Contains("medium")) return GgmlType.Medium;
-            if (modelFileName.Contains("large")) return GgmlType.LargeV1;
-            return null;
         }
 
         private static string FindModelPath(string modelFileName)
