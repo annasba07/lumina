@@ -37,20 +37,25 @@ namespace SuperWhisperWPF
                                 await EngineComparison.CompareEnginesAsync(testAudio);
                                 Environment.Exit(0);
                                 break;
+                            case "--compare-engines-live":
+                                Logger.Info("Starting live A/B comparison with microphone input...");
+                                await EngineComparison.RunLiveComparisonAsync();
+                                Environment.Exit(0);
+                                break;
                             case "--latency-benchmark":
                                 var latencyBenchmark = new LatencyBenchmark();
                                 await latencyBenchmark.RunFullBenchmarkAsync();
                                 break;
                             case "--help":
                                 Logger.Info("Available commands:");
-                                Logger.Info("  --compare-engines: A/B test all engines in parallel");
-                                Logger.Info("  --latency-benchmark: Run latency benchmark");
-                                Logger.Info("  --enable-tiny         : Enable tiny model for ~5x speed");
-                                Logger.Info("  --benchmark           : Run model performance comparison");
-                                Logger.Info("  --benchmark-onnx      : Test ONNX Runtime with DirectML");
-                                Logger.Info("  --realistic-benchmark : Test with real speech samples");
-                                Logger.Info("  --ultra-benchmark     : Test ultra performance target (sub-200ms)");
-                                Logger.Info("  --latency-benchmark   : Test all optimization engines for sub-200ms target");
+                                Logger.Info("  --compare-engines      : A/B test all engines in parallel (synthetic audio)");
+                                Logger.Info("  --compare-engines-live : A/B test all engines with real microphone input");
+                                Logger.Info("  --latency-benchmark    : Run latency benchmark");
+                                Logger.Info("  --enable-tiny          : Enable tiny model for ~5x speed");
+                                Logger.Info("  --benchmark            : Run model performance comparison");
+                                Logger.Info("  --benchmark-onnx       : Test ONNX Runtime with DirectML");
+                                Logger.Info("  --realistic-benchmark  : Test with real speech samples");
+                                Logger.Info("  --ultra-benchmark      : Test ultra performance target (sub-200ms)");
                                 break;
                         }
                     }

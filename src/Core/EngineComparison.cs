@@ -192,5 +192,64 @@ namespace SuperWhisperWPF.Core
                 }
             }
         }
+
+        /// <summary>
+        /// Run live A/B comparison with real microphone input
+        /// </summary>
+        public static async Task RunLiveComparisonAsync()
+        {
+            Logger.Info("=== LIVE A/B ENGINE COMPARISON ===");
+            Logger.Info("Get ready to speak...");
+
+            // Countdown
+            for (int i = 3; i > 0; i--)
+            {
+                Logger.Info($"Starting in {i}...");
+                await Task.Delay(1000);
+            }
+
+            var audioCapture = new SuperWhisperWPF.AudioCapture();
+            var recordingComplete = new TaskCompletionSource<byte[]>();
+
+            // Subscribe to speech ended event
+            audioCapture.SpeechEnded += (sender, audioData) =>
+            {
+                recordingComplete.TrySetResult(audioData);
+            };
+
+            try
+            {
+                Logger.Info("🎤 RECORDING NOW - SPEAK!");
+                audioCapture.StartRecording();
+
+                // Record for 3 seconds
+                await Task.Delay(3000);
+
+                audioCapture.StopRecording();
+                Logger.Info("⏹️  Recording stopped, processing...");
+
+                // Wait for audio data
+                var audioData = await recordingComplete.Task;
+
+                if (audioData == null || audioData.Length == 0)
+                {
+                    Logger.Error("No audio captured");
+                    return;
+                }
+
+                Logger.Info($"Captured {audioData.Length} bytes ({audioData.Length / 32000.0:F1}s) of audio");
+
+                // Run A/B comparison
+                await CompareEnginesAsync(audioData);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Live comparison failed: {ex.Message}", ex);
+            }
+            finally
+            {
+                audioCapture.Dispose();
+            }
+        }
     }
 }
